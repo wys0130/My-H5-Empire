@@ -9,6 +9,8 @@ import { history, useLocation } from 'umi';
 import Dashboard from '@/pages/dashboard';
 import UsersManage from '@/pages/users';
 import Finance from '@/pages/finance';
+// 🌟 插入这行：暴力引入我们新建的 Excel 组件
+import ExcelEditor from '@/pages/excel/index';
 
 const { Header, Sider, Content } = Layout;
 
@@ -35,9 +37,15 @@ const MallPortal = () => {
   const handleUseTemplate = (tpl: any) => {
     try {
       // 存入缓存，待会儿编辑器页面加载时会来这里取数据
-      localStorage.setItem('coolmall_pending_tpl', tpl.json_data);
+      localStorage.setItem('coolmall_pending_tpl', tpl.json_data || '[]');
       message.success('模板已就绪，正在分配渲染引擎...');
-      setTimeout(() => history.push('/editor'), 600);
+
+      // 💥 核心修复：根据模板的 category 智能分配通道！不再无脑进 editor
+      if (tpl.category === 'excel') {
+        setTimeout(() => history.push('/excel'), 600);
+      } else {
+        setTimeout(() => history.push('/editor'), 600);
+      }
     } catch (e) {
       message.error('模板数据异常');
     }
@@ -57,6 +65,12 @@ const MallPortal = () => {
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <span style={{ color: '#666', fontSize: '13px' }}>欢迎, {user?.username}</span>
           <Tag color={user?.role === 'vip' ? 'gold' : 'blue'}>{user?.role === 'vip' ? 'VIP' : '普通用户'}</Tag>
+
+          {/* 🌟 插入这行：新建 Excel 的按钮 */}
+          <Button size="large" onClick={() => history.push('/excel')} style={{ borderRadius: '6px', fontWeight: 'bold', color: '#107c41', borderColor: '#107c41' }}>
+            + 新建云表格 (Excel)
+          </Button>
+          
           <Button
             type="primary"
             size="large"
@@ -173,12 +187,22 @@ export default function BasicLayout(props: any) {
     );
   }
 
-  // 4. 🌟 C端独立生产力画布分发 (严格限制只有 /editor 才会进画布)
+  // 4. 🌟 C端长页编辑器独立分发
   if (path.startsWith('/editor')) {
     return (
       <>
         <GlobalBrandStyle />
         {props.children}
+      </>
+    );
+  }
+
+  // 🌟 5. Excel 引擎极客硬路由（彻底解决白屏！）
+  if (path.startsWith('/excel')) {
+    return (
+      <>
+        <GlobalBrandStyle />
+        <ExcelEditor />
       </>
     );
   }
@@ -224,10 +248,12 @@ export default function BasicLayout(props: any) {
           </Dropdown>
         </Header>
         <Content style={{ margin: '24px', background: '#f0f2f5', borderRadius: '8px', overflow: 'initial' }}>
+          {/* 🌟 暴力接管路由，直接渲染组件，彻底告别白屏！ */}
           {path === '/dashboard' ? <Dashboard /> :
             path === '/users' ? <UsersManage /> :
               path === '/finance' ? <Finance /> :
-                props.children}
+                path === '/excel' ? <ExcelEditor /> :
+                  props.children}
         </Content>
       </Layout>
     </Layout>
