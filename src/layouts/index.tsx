@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Dropdown, Avatar, Tag, Button, message, Tabs, Modal, Table, Switch, Space } from 'antd';
+import { Layout, Menu, Dropdown, Avatar, Tag, Button, message, Tabs, Modal, Table, Switch, Space, Input } from 'antd';
 message.config({ top: 70, maxCount: 3 });
 import { DashboardOutlined, BankOutlined, AppstoreOutlined, TeamOutlined, LogoutOutlined, ShoppingCartOutlined, AppstoreAddOutlined, SafetyCertificateOutlined, BuildOutlined } from '@ant-design/icons';
 import { history, useLocation } from 'umi';
@@ -12,7 +12,7 @@ import ExcelEditor from '@/pages/excel/index';
 const { Header, Sider, Content } = Layout;
 
 // =================================================================
-// 🌟 1. 商城大厅与个人中心 (极简文案)
+// 🌟 1. 商城大厅与个人中心
 // =================================================================
 const MallPortal = () => {
   const [templates, setTemplates] = useState([]);
@@ -76,7 +76,6 @@ const MallPortal = () => {
   return (
     <Layout style={{ height: '100vh', background: '#f8f9fa', overflow: 'hidden' }}>
       <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', zIndex: 10 }}>
-
         <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <img src="/logo.png" alt="酷猫" style={{ height: '32px', marginRight: '24px', flexShrink: 0 }} onError={(e) => e.currentTarget.style.display = 'none'} />
           <Menu mode="horizontal" selectedKeys={[activeMenu]} onClick={(e) => setActiveMenu(e.key)} style={{ borderBottom: 'none', lineHeight: '64px', flex: 1, minWidth: 0, border: 'none' }}>
@@ -85,7 +84,6 @@ const MallPortal = () => {
             <Menu.Item key="my" style={{ fontWeight: 'bold', fontSize: '15px' }}>我的作品</Menu.Item>
           </Menu>
         </div>
-
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0, paddingLeft: '16px' }}>
           <span style={{ color: '#666', fontSize: '13px' }}>欢迎, {user?.username}</span>
           <Tag color={user?.role === 'admin' ? 'red' : 'blue'} style={{ fontWeight: 'bold', margin: 0 }}>
@@ -103,7 +101,6 @@ const MallPortal = () => {
       </Header>
 
       <Content style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', width: '100%', height: 'calc(100vh - 64px)', overflowY: 'auto', paddingBottom: '80px' }}>
-
         {activeMenu === 'mall' && (
           <>
             <Tabs defaultActiveKey="1" size="large" style={{ marginBottom: '24px' }}><Tabs.TabPane tab="商城主页" key="1" /></Tabs>
@@ -201,7 +198,7 @@ const MallPortal = () => {
 };
 
 // =================================================================
-// 🌟 2. 满血 B 端管理后台 (加了分页、改了极简文字、加了按钮事件)
+// 🌟 2. 满血 B 端管理后台
 // =================================================================
 
 const AdminTemplates = () => {
@@ -222,7 +219,6 @@ const AdminTemplates = () => {
   return (
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
       <h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>模板管理</h3>
-      {/* 💥 加上完整分页 */}
       <Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} />
     </div>
   );
@@ -282,7 +278,6 @@ const AdminAudit = () => {
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
       <h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>作品审核</h3>
       <Tabs defaultActiveKey="1" onChange={setActiveTab}>
-        {/* 💥 加上完整分页，解决图1没滑轮的问题 */}
         <Tabs.TabPane tab="作品大盘" key="1"><Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} /></Tabs.TabPane>
         <Tabs.TabPane tab="销毁日志" key="2"><Table columns={logCols} dataSource={logs} rowKey="id" pagination={{ pageSize: 8 }} /></Tabs.TabPane>
       </Tabs>
@@ -290,14 +285,36 @@ const AdminAudit = () => {
   );
 };
 
+// 💥 修复图2：实现真实的下发新组件表单及交互！
 const AdminComponents = () => {
   const [data, setData] = useState([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [newComp, setNewComp] = useState({ name: '', icon: '📦', category: '基础组件' });
+
   const load = () => fetch('http://localhost:3000/api/components/list').then(r => r.json()).then(res => setData(res.data || []));
   useEffect(() => { load(); }, []);
 
   const toggleStatus = (id: number, status: boolean) => {
     fetch('http://localhost:3000/api/admin/components/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin' }, body: JSON.stringify({ id, status }) })
       .then(r => r.json()).then(() => { message.success('设置成功'); load(); });
+  };
+
+  const handleAdd = () => {
+    if (!newComp.name) return message.warning('请输入组件名称');
+    fetch('http://localhost:3000/api/admin/components/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
+      body: JSON.stringify(newComp)
+    }).then(r => r.json()).then(res => {
+      if (res.code === 200) {
+        message.success(res.msg);
+        setIsModalVisible(false);
+        setNewComp({ name: '', icon: '📦', category: '基础组件' });
+        load();
+      } else {
+        message.error(res.msg);
+      }
+    });
   };
 
   const cols = [
@@ -311,14 +328,30 @@ const AdminComponents = () => {
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
         <h3 style={{ margin: 0, fontWeight: 'bold' }}>组件管理</h3>
-        {/* 💥 修复图3：增加交互提示 */}
-        <Button type="primary" onClick={() => message.info('功能开发中：即将支持上传 UMD 自定义组件包')} style={{ background: '#10b981', borderColor: '#10b981' }}>下发新组件</Button>
+        <Button type="primary" onClick={() => setIsModalVisible(true)} style={{ background: '#e11d48', borderColor: '#e11d48' }}>下发新组件</Button>
       </div>
       <Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 10 }} />
+
+      {/* 💥 真实的下发弹窗 */}
+      <Modal title="🚀 下发新组件" visible={isModalVisible} onOk={handleAdd} onCancel={() => setIsModalVisible(false)} okText="确认下发" cancelText="取消">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
+          <div>
+            <div style={{ marginBottom: '8px' }}>组件名称 (需与代码侧严格一致) :</div>
+            <Input placeholder="例如：跑马灯组件" value={newComp.name} onChange={e => setNewComp({ ...newComp, name: e.target.value })} />
+          </div>
+          <div>
+            <div style={{ marginBottom: '8px' }}>组件图标 (Emoji) :</div>
+            <Input placeholder="例如：🎠" value={newComp.icon} onChange={e => setNewComp({ ...newComp, icon: e.target.value })} />
+          </div>
+          <div>
+            <div style={{ marginBottom: '8px' }}>所属分类 :</div>
+            <Input placeholder="例如：基础组件 / 媒体组件" value={newComp.category} onChange={e => setNewComp({ ...newComp, category: e.target.value })} />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
-
 
 // =================================================================
 // 🌟 3. 主框架入口 (BasicLayout)
