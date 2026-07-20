@@ -10,14 +10,40 @@ export default function ExcelEditor() {
     const [title, setTitle] = useState('未命名云表格');
     const [saving, setSaving] = useState(false);
 
-    // 提取路由里带入的作品 ID
     const workId = (location.query as any)?.tid || ('EXCEL_' + Date.now());
     const userStr = localStorage.getItem('coolmall_user');
     const user = userStr ? JSON.parse(userStr) : null;
 
+    // 💥 修复图1：极强力底层补丁，监听中文输入法法起事件并自动触发双击！
+    const handleIframeLoad = (e: any) => {
+        const win = e.target.contentWindow;
+        if (!win) return;
+        win.focus();
+
+        const forceTriggerEdit = () => {
+            const $ = win.$;
+            if ($ && $('#luckysheet-input-box').is(':hidden')) {
+                const selected = $('.luckysheet-cell-selected');
+                if (selected.length > 0) {
+                    selected.trigger('dblclick');
+                }
+            }
+        };
+
+        // 监听中文输入法的起手动作
+        win.document.addEventListener('compositionstart', forceTriggerEdit, true);
+
+        // 监听普通键盘事件 (忽略控制键)
+        win.document.addEventListener('keydown', (ev: any) => {
+            if (ev.key && ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey) {
+                forceTriggerEdit();
+            }
+        }, true);
+    };
+
     const handleSave = async () => {
         setSaving(true);
-        message.loading({ content: '正在生成真实预览图并打包数据...', key: 'excel-save', duration: 0 });
+        message.loading({ content: '正在生成预览...', key: 'excel-save', duration: 0 });
 
         try {
             const iframeWindow = (iframeRef.current?.contentWindow as any);
@@ -35,7 +61,6 @@ export default function ExcelEditor() {
                 }
             } catch (e) { console.warn('跨域截图受限'); }
 
-            // 💥 致命修复：调用作品上架接口，并带上 category: 'excel' 的身份牌！
             const res = await fetch('http://localhost:3000/api/h5/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
@@ -49,14 +74,13 @@ export default function ExcelEditor() {
             }).then(r => r.json());
 
             if (res.code === 200) {
-                message.success({ content: '🎉 云表格已成功存入并上架！', key: 'excel-save', duration: 2 });
-                // 保存后追加 ID 参数，防止再次点击新建副本
+                message.success({ content: '🎉 表格已存入草稿箱！', key: 'excel-save', duration: 2 });
                 if (!(location.query as any)?.tid) history.replace(`/excel?tid=${workId}`);
             } else {
                 message.error({ content: '保存失败: ' + res.msg, key: 'excel-save', duration: 3 });
             }
         } catch (e) {
-            message.error({ content: '提取表格数据失败，请点击一下表格内部', key: 'excel-save', duration: 3 });
+            message.error({ content: '保存失败，请重试', key: 'excel-save', duration: 3 });
         } finally {
             setSaving(false);
         }
@@ -73,11 +97,11 @@ export default function ExcelEditor() {
                 </div>
                 <div>
                     <Button type="default" loading={saving} icon={<CloudUploadOutlined />} onClick={handleSave} style={{ background: '#fff', color: '#107c41', border: 'none', fontWeight: '900', borderRadius: '6px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-                        保存并上架到我的作品
+                        保存草稿
                     </Button>
                 </div>
             </div>
-            <iframe id="excel-iframe" ref={iframeRef} src="/excel.html" onMouseEnter={() => iframeRef.current?.contentWindow?.focus()} onLoad={(e) => (e.target as HTMLIFrameElement).contentWindow?.focus()} style={{ flex: 1, border: 'none', width: '100%', background: '#fff' }} />
+            <iframe id="excel-iframe" ref={iframeRef} src="/excel.html" onLoad={handleIframeLoad} onMouseEnter={() => iframeRef.current?.contentWindow?.focus()} style={{ flex: 1, border: 'none', width: '100%', background: '#fff' }} />
         </div>
     );
 }

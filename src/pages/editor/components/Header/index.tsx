@@ -126,7 +126,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       const res = await response.json();
       if (res.code === 200) {
-        message.success({ content: '🎉 已加入组件模板，可打开查看', key: 'save', duration: 3 });
+        message.success({ content: '🎉 已加入组件库，可打开查看', key: 'save', duration: 3 });
         setModalConfig({ visible: false, type: 'template' });
         setSaveTplName('');
       } else message.error({ content: res.msg, key: 'save' });
@@ -135,20 +135,22 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     }
   };
 
+  // 💥 修复图2：这里是存为草稿，所以我们改成保存草稿的代码！
   const handlePublishH5 = async () => {
     if (!saveTplName) return message.warning('请填写作品名称！');
     if (!faceUrl) return message.warning('封面生成中，请稍后...');
 
-    message.loading({ content: '保存中...', key: 'publish', duration: 0 });
+    message.loading({ content: '保存草稿中...', key: 'publish', duration: 0 });
     const workId = props.location.query?.tid || ('H5_' + Date.now());
 
+    // 发给后端的请求不会有 is_published 参数，由后端 server.js 默认赋予 0 (草稿状态)
     const res = await fetch('http://localhost:3000/api/h5/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
       body: JSON.stringify({ workId: workId, title: saveTplName, schema: pointData, cover_url: faceUrl })
     }).then(r => r.json());
 
     if (res.code === 200) {
-      message.success({ content: '🚀 上架成功！', key: 'publish', duration: 2 });
+      message.success({ content: '🚀 草稿保存成功，请去我的作品列表上架！', key: 'publish', duration: 3 });
       setModalConfig({ visible: false, type: 'publish' });
       setSaveTplName('');
       if (!props.location.query?.tid) history.replace(`/editor?tid=${workId}`);
@@ -160,10 +162,11 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     try {
       const res = await fetch('http://localhost:3000/api/templates/list').then(r => r.json());
       message.destroy('fetch');
-      const savedTpls = res.data || [];
+
+      const savedTpls = (res.data || []).filter((t: any) => !String(t.id).includes('_'));
 
       const modal = Modal.info({
-        title: '组件模板库', width: 800, icon: null, okText: '关闭',
+        title: '组件库', width: 800, icon: null, okText: '关闭',
         content: (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '20px', maxHeight: '500px', overflowY: 'auto' }}>
             {savedTpls.length === 0 ? <Result status="404" title="暂无数据" style={{ width: '100%' }} /> : null}
@@ -284,8 +287,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       <div className={`hide-scroll ${styles.controlArea}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflowX: 'auto', whiteSpace: 'nowrap' }}>
         <Button type="default" onClick={() => history.push('/mall')} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>🏠 返回</Button>
-        <Button type="primary" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} onClick={useTemplate}>组件模板</Button>
-        <Button type="default" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} onClick={openTemplateModal} disabled={!pointData.length}>保存模板</Button>
+        <Button type="primary" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} onClick={useTemplate}>组件库</Button>
+        <Button type="default" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} onClick={openTemplateModal} disabled={!pointData.length}>保存组件</Button>
 
         <MyPopover content={content()} directions="BOTTOM">
           <Button type="default" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
@@ -298,8 +301,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       </div>
 
       <div className={styles.btnArea} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '12px', paddingLeft: '16px', background: '#fff', zIndex: 999, minWidth: 'max-content', whiteSpace: 'nowrap' }}>
+        {/* 💥 修复图2：这里才是保存草稿的按钮！ */}
         <Button type="primary" icon={<SendOutlined />} onClick={openPublishModal} style={{ background: '#e11d48', borderColor: '#e11d48', display: 'flex', alignItems: 'center' }}>
-          上架商城
+          保存草稿
         </Button>
 
         {user && !isAdmin ? (
@@ -318,7 +322,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       </Modal>
 
       <Modal
-        title={modalConfig.type === 'template' ? '💾 保存组件模板' : '🚀 上架作品'}
+        title={modalConfig.type === 'template' ? '💾 保存为组件' : '🚀 保存草稿'}
         visible={modalConfig.visible}
         onOk={handleModalOk}
         onCancel={() => setModalConfig({ ...modalConfig, visible: false })}
