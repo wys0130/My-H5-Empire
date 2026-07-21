@@ -109,6 +109,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     else handlePublishH5();
   };
 
+  // 💥 修复“保存为组件报错”的核心：附带完备的用户凭证请求头，并且安全解析响应，彻底告别盲目红框！
   const executeCloudSave = async () => {
     if (!saveTplName) return message.warning('请填写模板名称！');
     if (!faceUrl) return message.warning('封面生成中，请稍后...');
@@ -120,22 +121,30 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     message.loading({ content: '同步中...', key: 'save' });
     try {
       const response = await fetch('http://localhost:3000/api/templates/save', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-role': user?.role || 'user',
+          'x-user-id': user?.userId?.toString() || '1'
+        },
         body: JSON.stringify({ title: saveTplName, cover_url: faceUrl, json_data: safeData, category: 'h5' })
       });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      const res = await response.json();
+
+      const res = await response.json(); // 解析后端传来的JSON (无论是200还是500)
+
       if (res.code === 200) {
         message.success({ content: '🎉 已加入组件库，可打开查看', key: 'save', duration: 3 });
         setModalConfig({ visible: false, type: 'template' });
         setSaveTplName('');
-      } else message.error({ content: res.msg, key: 'save' });
+      } else {
+        message.error({ content: res.msg || '保存失败', key: 'save' });
+      }
     } catch (err) {
       message.error({ content: '后端连接异常', key: 'save' });
+      console.error(err);
     }
   };
 
-  // 💥 修复图2：这里是存为草稿，所以我们改成保存草稿的代码！
   const handlePublishH5 = async () => {
     if (!saveTplName) return message.warning('请填写作品名称！');
     if (!faceUrl) return message.warning('封面生成中，请稍后...');
@@ -143,14 +152,13 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     message.loading({ content: '保存草稿中...', key: 'publish', duration: 0 });
     const workId = props.location.query?.tid || ('H5_' + Date.now());
 
-    // 发给后端的请求不会有 is_published 参数，由后端 server.js 默认赋予 0 (草稿状态)
     const res = await fetch('http://localhost:3000/api/h5/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
-      body: JSON.stringify({ workId: workId, title: saveTplName, schema: pointData, cover_url: faceUrl })
+      body: JSON.stringify({ workId: workId, title: saveTplName, schema: pointData, cover_url: faceUrl, is_published: 0 })
     }).then(r => r.json());
 
     if (res.code === 200) {
-      message.success({ content: '🚀 草稿保存成功，请去我的作品列表上架！', key: 'publish', duration: 3 });
+      message.success({ content: '🚀 已存入您的私有草稿箱！', key: 'publish', duration: 3 });
       setModalConfig({ visible: false, type: 'publish' });
       setSaveTplName('');
       if (!props.location.query?.tid) history.replace(`/editor?tid=${workId}`);
@@ -301,17 +309,19 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       </div>
 
       <div className={styles.btnArea} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '12px', paddingLeft: '16px', background: '#fff', zIndex: 999, minWidth: 'max-content', whiteSpace: 'nowrap' }}>
-        {/* 💥 修复图2：这里才是保存草稿的按钮！ */}
-        <Button type="primary" icon={<SendOutlined />} onClick={openPublishModal} style={{ background: '#e11d48', borderColor: '#e11d48', display: 'flex', alignItems: 'center' }}>
+        <Button onClick={() => history.push('/mall?tab=my')} style={{ borderColor: '#e11d48', color: '#e11d48' }}>
+          我的作品
+        </Button>
+        <Button type="primary" icon={<SendOutlined />} onClick={openPublishModal}>
           保存草稿
         </Button>
 
         {user && !isAdmin ? (
           <Popover content={popoverContent} title={<span>个人中心</span>} trigger="click" placement="bottomRight">
-            <Button type="primary" icon={<UserOutlined />} style={{ background: '#111827', border: 'none', color: '#fff', display: 'flex', alignItems: 'center' }}>我的</Button>
+            <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff', display: 'flex', alignItems: 'center' }} icon={<UserOutlined />}>我的</Button>
           </Popover>
         ) : (
-          <Button type="primary" icon={<UserOutlined />} onClick={() => { if (!user) { history.push('/'); } else if (isAdmin) { history.push('/dashboard'); } }} style={{ background: '#111827', border: 'none', color: '#fff', display: 'flex', alignItems: 'center' }}>
+          <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff', display: 'flex', alignItems: 'center' }} icon={<UserOutlined />} onClick={() => { if (!user) { history.push('/'); } else if (isAdmin) { history.push('/dashboard'); } }}>
             {!user ? '登录' : '后台'}
           </Button>
         )}

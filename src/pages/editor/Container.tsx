@@ -40,11 +40,56 @@ const Container = (props: {
   const [scaleNum, setScale] = useState(1);
   const [collapsed, setCollapsed] = useState(false);
   const [rightColla, setRightColla] = useState(true);
-  // 🌟 修复：补全控制左侧边栏切换的核心灵魂状态
   const [activeTabKey, setActiveTabKey] = useState('1');
+  const [disabledComps, setDisabledComps] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('http://localhost:3000/api/components/list')
+      .then(r => r.json())
+      .then(res => {
+        if (res.code === 200 && res.data) {
+          const disabledNames = res.data
+            .filter((c: any) => c.status === 0)
+            .map((c: any) => c.name.trim());
+          setDisabledComps(disabledNames);
+        }
+      })
+      .catch(err => console.error('获取后台组件状态失败', err));
+  }, []);
+
   const { pstate, cstate, dispatch } = props;
   const pointData = pstate ? pstate.pointData : [];
   const cpointData = cstate ? cstate.pointData : [];
+
+  // 🌟 1. 核心中文匹配逻辑
+  const isCompDisabled = useCallback((displayName: string) => {
+    if (!displayName) return false;
+    return disabledComps.some(name => {
+      const coreName = name.replace('组件', '').trim();
+      return displayName.includes(coreName);
+    });
+  }, [disabledComps]);
+
+  // 🌟 2. 翻译出底层英文 Type 身份证
+  const disabledTypes = useMemo(() => {
+    const allTpls = [...template, ...mediaTpl, ...graphTpl, ...shopTpl];
+    return allTpls.filter(v => isCompDisabled(v.displayName)).map(v => v.type);
+  }, [isCompDisabled, template, mediaTpl, graphTpl, shopTpl]);
+
+  // 🌟 3. 【绝对杀招：直接血洗 Redux 全局数据库！】
+  useEffect(() => {
+    if (disabledTypes.length > 0 && pstate && pstate.pointData) {
+      // 过滤出干净的数据
+      const cleanData = pstate.pointData.filter((pt: any) => !disabledTypes.includes(pt.item?.type));
+      // 如果发现残留的脏数据，直接暴力覆盖整个 Redux 状态！
+      if (cleanData.length !== pstate.pointData.length) {
+        dispatch({
+          type: 'editorModal/importTplData',
+          payload: cleanData
+        });
+      }
+    }
+  }, [disabledTypes, pstate, dispatch]);
 
   const changeCollapse = useMemo(() => {
     return (c: boolean) => {
@@ -58,7 +103,6 @@ const Container = (props: {
   }, []);
   const curPoint = pstate ? pstate.curPoint : {};
 
-  // 指定画布的id
   let canvasId = 'js_canvas';
 
   const backSize = () => {
@@ -115,11 +159,9 @@ const Container = (props: {
     };
   }, [dispatch]);
 
-  // 🌟 修复：暴力击穿 Dva 的状态机命名空间封锁
   const redohandler = useMemo(() => {
     return () => {
       dispatch(ActionCreators.redo());
-      // 双保险：如果全局拦截了，就往 editorModal 这个专属通道里强塞指令
       dispatch({ type: 'editorModal/@@redux-undo/REDO' });
     };
   }, [dispatch]);
@@ -127,7 +169,6 @@ const Container = (props: {
   const undohandler = useMemo(() => {
     return () => {
       dispatch(ActionCreators.undo());
-      // 双保险同上
       dispatch({ type: 'editorModal/@@redux-undo/UNDO' });
     };
   }, [dispatch]);
@@ -140,40 +181,36 @@ const Container = (props: {
   };
 
   useEffect(() => {
-    // note (@livs-ops): 检测当前浏览器是否处于手机模式下
     if (detectMobileBrowser(getBrowserNavigatorMetaInfo())) {
       props.history.push('/mobileTip');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const prevSelectedId = useRef<string | null>(null);
 
   useEffect(() => {
     if (pstate.curPoint && pstate.curPoint.status === 'inToCanvas') {
-      setRightColla(false);
+      if (pstate.curPoint.id !== prevSelectedId.current) {
+        setRightColla(false);
+        prevSelectedId.current = pstate.curPoint.id;
+      }
+    } else {
+      prevSelectedId.current = null;
     }
   }, [pstate.curPoint]);
 
   const allType = useMemo(() => {
     let arr: string[] = [];
-    template.forEach(v => {
-      arr.push(v.type);
-    });
-    mediaTpl.forEach(v => {
-      arr.push(v.type);
-    });
-    graphTpl.forEach(v => {
-      arr.push(v.type);
-    });
-    shopTpl.forEach(v => {
-      arr.push(v.type);
-    });
+    template.forEach(v => arr.push(v.type));
+    mediaTpl.forEach(v => arr.push(v.type));
+    graphTpl.forEach(v => arr.push(v.type));
+    shopTpl.forEach(v => arr.push(v.type));
     return arr;
   }, [graphTpl, mediaTpl, template, shopTpl]);
 
   const [dragstate, setDragState] = useState({ x: 0, y: 0 });
 
   const ref = useRef<HTMLDivElement>(null);
-  // 🌟 新增：专门给左侧菜单栏加个“瞄准器”
   const listRef = useRef<HTMLDivElement>(null);
   const renderRight = useMemo(() => {
     return (
@@ -221,7 +258,7 @@ const Container = (props: {
         <>
           <TabPane tab={generateHeader('base', '')} key="1">
             <div className={styles.ctitle}>基础组件</div>
-            {template.map((value, i) => {
+            {template.filter(v => !isCompDisabled(v.displayName)).map((value, i) => {
               return (
                 <TargetBox item={value} key={i} canvasId={canvasId}>
                   <DynamicEngine
@@ -236,7 +273,7 @@ const Container = (props: {
           </TabPane>
           <TabPane tab={generateHeader('media', '')} key="2">
             <div className={styles.ctitle}>媒体组件</div>
-            {mediaTpl.map((value, i) => (
+            {mediaTpl.filter(v => !isCompDisabled(v.displayName)).map((value, i) => (
               <TargetBox item={value} key={i} canvasId={canvasId}>
                 <DynamicEngine
                   {...value}
@@ -249,7 +286,7 @@ const Container = (props: {
           </TabPane>
           <TabPane tab={generateHeader('visible', '')} key="3">
             <div className={styles.ctitle}>可视化组件</div>
-            {graphTpl.map((value, i) => (
+            {graphTpl.filter(v => !isCompDisabled(v.displayName)).map((value, i) => (
               <TargetBox item={value} key={i} canvasId={canvasId}>
                 <DynamicEngine
                   {...value}
@@ -262,7 +299,7 @@ const Container = (props: {
           </TabPane>
           <TabPane tab={generateHeader('shop', '')} key="4">
             <div className={styles.ctitle}>营销组件</div>
-            {shopTpl.map((value, i) => (
+            {shopTpl.filter(v => !isCompDisabled(v.displayName)).map((value, i) => (
               <TargetBox item={value} key={i} canvasId={canvasId}>
                 <DynamicEngine
                   {...value}
@@ -276,7 +313,7 @@ const Container = (props: {
         </>
       );
     }
-  }, [canvasId, collapsed, generateHeader, graphTpl, mediaTpl, schemaH5, template, shopTpl]);
+  }, [canvasId, collapsed, generateHeader, graphTpl, mediaTpl, schemaH5, template, shopTpl, isCompDisabled]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [diffmove, setDiffMove] = useState({
@@ -288,10 +325,7 @@ const Container = (props: {
     return (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target === containerRef.current) {
         setDiffMove({
-          start: {
-            x: e.clientX,
-            y: e.clientY,
-          },
+          start: { x: e.clientX, y: e.clientY },
           move: true,
         });
       }
@@ -308,10 +342,7 @@ const Container = (props: {
         diffx = newX - diffmove.start.x;
         diffy = newY - diffmove.start.y;
         setDiffMove({
-          start: {
-            x: newX,
-            y: newY,
-          },
+          start: { x: newX, y: newY },
           move: true,
         });
         setDragState(prev => {
@@ -326,25 +357,16 @@ const Container = (props: {
 
   const mouseupfn = useMemo(() => {
     return () => {
-      setDiffMove({
-        start: { x: 0, y: 0 },
-        move: false,
-      });
+      setDiffMove({ start: { x: 0, y: 0 }, move: false });
     };
   }, []);
 
   const onwheelFn = useMemo(() => {
     return (e: React.WheelEvent<HTMLDivElement>) => {
       if (e.deltaY < 0) {
-        setDragState(prev => ({
-          x: prev.x,
-          y: prev.y + 40,
-        }));
+        setDragState(prev => ({ x: prev.x, y: prev.y + 40 }));
       } else {
-        setDragState(prev => ({
-          x: prev.x,
-          y: prev.y - 40,
-        }));
+        setDragState(prev => ({ x: prev.x, y: prev.y - 40 }));
       }
     };
   }, []);
@@ -368,7 +390,6 @@ const Container = (props: {
         importTpl={importTpl}
       />
       <div className={styles.container}>
-        {/* 🌟 1. 左侧菜单栏：加上动态宽度控制 */}
         <div className={styles.list} style={{ width: collapsed ? '60px' : '350px', transition: 'width 0.3s' }}>
           <div className={styles.componentList}>
             <Tabs
@@ -387,9 +408,6 @@ const Container = (props: {
           </div>
         </div>
 
-        {/* 🌟 2. 【核心修复】：那个导致巨大空白的 <div style={{ width: '350px' }}></div> 已经被我彻底删除了！ */}
-
-        {/* 🌟 3. 画布区域（无需修改，下面直接接你的 tickMark） */}
         <div
           className={styles.tickMark}
           id="calibration"
@@ -412,6 +430,7 @@ const Container = (props: {
             scaleNum={scaleNum}
             canvasId={canvasId}
             allType={allType}
+            disabledTypes={disabledTypes}
           />
           <CanvasControl scaleNum={scaleNum} handleSlider={handleSlider} backSize={backSize} />
         </div>

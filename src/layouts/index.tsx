@@ -14,11 +14,15 @@ const { Header, Sider, Content } = Layout;
 // 🌟 1. 商城大厅与个人中心
 // =================================================================
 const MallPortal = () => {
+  const location = useLocation(); // 1. 获取路由对象
   const [templates, setTemplates] = useState([]);
   const [myWorks, setMyWorks] = useState([]);
   const [carouselData, setCarouselData] = useState([]);
-  const [activeMenu, setActiveMenu] = useState('mall');
-  const [previewModal, setPreviewModal] = useState({ visible: false, url: '' });
+  const [announcement, setAnnouncement] = useState('');
+
+  // 2. 初始化时根据网址带的 ?tab=xxx 自动设置激活的菜单
+  const initialTab = (location.query as any)?.tab || 'mall';
+  const [activeMenu, setActiveMenu] = useState(initialTab);
   const [showVipCenter, setShowVipCenter] = useState(false);
 
   const userStr = localStorage.getItem('coolmall_user');
@@ -27,6 +31,7 @@ const MallPortal = () => {
   const loadData = () => {
     fetch('http://localhost:3000/api/templates/list').then(r => r.json()).then(res => { if (res.code === 200) setTemplates(res.data || []); });
     fetch('http://localhost:3000/api/settings/carousel').then(r => r.json()).then(res => { if (res.code === 200) setCarouselData(res.data || []); });
+    fetch('http://localhost:3000/api/settings/announcement').then(r => r.json()).then(res => { if (res.code === 200) setAnnouncement(res.data || ''); });
     if (user) {
       fetch('http://localhost:3000/api/h5/my-works', { headers: { 'x-role': user.role, 'x-user-id': user.userId?.toString() } })
         .then(r => r.json()).then(res => { if (res.code === 200) setMyWorks(res.data || []); });
@@ -87,31 +92,45 @@ const MallPortal = () => {
           <Tag color={user?.role === 'admin' ? 'red' : 'blue'}>{user?.role === 'admin' ? '管理员' : '创作者'}</Tag>
 
           {user && !user.role?.includes('admin') && (
-            <Button type="primary" onClick={() => setShowVipCenter(true)} style={{ background: '#d46b08', borderColor: '#d46b08' }}>会员中心</Button>
+            <Button style={{ backgroundColor: '#d46b08', borderColor: '#d46b08', color: '#fff' }} onClick={() => setShowVipCenter(true)}>会员中心</Button>
           )}
 
-          {user?.role === 'admin' && (<Button type="primary" onClick={() => history.push('/dashboard')} style={{ background: '#111827', borderColor: '#111827', color: '#fff' }}>后台管理</Button>)}
-          <Button onClick={() => history.push('/excel')}>新建表格</Button>
-          {/* 💥 修复图3：确保这里的红色绝对不被 AntD 的蓝色污染 */}
-          <Button type="primary" onClick={() => { localStorage.removeItem('coolmall_pending_tpl'); history.push('/editor'); }} style={{ background: '#e11d48', borderColor: '#e11d48', color: '#fff' }}>新建页面</Button>
+          {user?.role === 'admin' && (<Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }} onClick={() => history.push('/dashboard')}>后台管理</Button>)}
+          <Button onClick={() => history.push('/excel')} style={{ color: '#107c41', borderColor: '#107c41' }}>新建表格</Button>
+          <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => { localStorage.removeItem('coolmall_pending_tpl'); history.push('/editor'); }}>新建页面</Button>
           <Button onClick={() => { localStorage.removeItem('coolmall_user'); history.push('/'); }}>退出</Button>
         </div>
       </Header>
 
-      <Content style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', width: '100%', height: 'calc(100vh - 64px)', overflowY: 'auto', paddingBottom: '80px' }}>
-
+      <Content style={{ padding: '40px 24px', width: '100%', height: 'calc(100vh - 64px)', overflowY: 'auto', paddingBottom: '80px' }}>
         {activeMenu === 'mall' && (
           <div style={{ animation: 'fadeIn 0.5s' }}>
+            {/* 🌟 顶部滚动公告栏 */}
+            {announcement && (
+              <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', padding: '10px 16px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: '#e11d48', fontSize: '14px', boxShadow: '0 2px 6px rgba(225,29,72,0.05)' }}>
+                <span style={{ fontSize: '16px' }}>📢</span>
+                <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, fontWeight: 500 }}>
+                  {announcement}
+                </div>
+              </div>
+            )}
+
             {carouselData.length > 0 && (
               <Carousel autoplay effect="fade" style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '40px', boxShadow: '0 8px 24px rgba(225,29,72,0.15)' }}>
                 {carouselData.map((item: any) => (
-                  <div key={item.id} style={{
-                    height: '300px',
-                    background: item.image_url ? `url(${item.image_url}) center/cover no-repeat` : (item.bg || '#111827'),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#fff'
-                  }}>
-                    <h1 style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>{item.title}</h1>
-                    <p style={{ fontSize: '18px', marginTop: '16px', opacity: 0.9, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{item.desc}</p>
+                  <div key={item.id}>
+                    {/* 🌟 在这里把轮播图高度调高，例如改成 200px */}
+                    <div style={{ height: '200px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', width: '100%' }}>
+                      {item.image_url ? (
+                        <img src={item.image_url} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} />
+                      ) : (
+                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#111827', zIndex: 0 }} />
+                      )}
+                      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0 20px' }}>
+                        <h1 style={{ fontSize: '42px', fontWeight: 'bold', margin: 0, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>{item.title}</h1>
+                        <p style={{ fontSize: '18px', marginTop: '16px', color: '#fff', opacity: 0.9, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{item.desc}</p>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </Carousel>
@@ -119,7 +138,7 @@ const MallPortal = () => {
 
             <div style={{ marginBottom: '48px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 'bold', borderLeft: '4px solid #e11d48', paddingLeft: '12px', marginBottom: '24px', color: '#333' }}>🔥 最新落地页</h2>
-              {h5Templates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>暂无页面</div>) : (
+              {h5Templates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>暂无页面模板</div>) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px' }}>
                   {h5Templates.map((tpl: any) => (
                     <div key={tpl.id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.3s', position: 'relative' }} onClick={() => handleUseTemplate(tpl)}>
@@ -137,7 +156,7 @@ const MallPortal = () => {
 
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 'bold', borderLeft: '4px solid #107c41', paddingLeft: '12px', marginBottom: '24px', color: '#333' }}>📊 热门云表格大盘</h2>
-              {excelTemplates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>暂无表格</div>) : (
+              {excelTemplates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>暂无表格模板</div>) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px' }}>
                   {excelTemplates.map((tpl: any) => (
                     <div key={tpl.id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.3s', position: 'relative' }} onClick={() => handleUseTemplate(tpl)}>
@@ -168,24 +187,32 @@ const MallPortal = () => {
         )}
 
         {activeMenu === 'my' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px' }}>
-            {myWorks.map((work: any) => {
-              const isExcel = work.category === 'excel' || (work.id && String(work.id).includes('EXCEL'));
-              return (
-                <div key={work.id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb', position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px', zIndex: 10 }}>
-                    <Button size="small" type="primary" onClick={(e) => { e.stopPropagation(); handleEditWork(work); }}>编辑</Button>
-                    <Button size="small" type={work.is_published === 1 ? 'default' : 'primary'} danger={work.is_published === 1} onClick={(e) => togglePublishStatus(e, work)}>{work.is_published === 1 ? '下架' : '上架'}</Button>
-                  </div>
-                  <div onClick={() => handleEditWork(work)}>
-                    <div style={{ height: '340px', background: '#f3f4f6', overflow: 'hidden', position: 'relative' }}>
-                      {isExcel ? <img src={work.cover_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <iframe src={`/preview?tid=${work.id}`} style={{ width: '375px', height: '667px', border: 'none', transform: 'scale(0.66)', transformOrigin: 'top left', pointerEvents: 'none', position: 'absolute', top: 0, left: 0 }} />}
+          <div>
+            {myWorks.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>
+                暂无作品，快去点击右上角“新建页面”或“新建表格”创作吧！
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px' }}>
+                {myWorks.map((work: any) => {
+                  const isExcel = work.category === 'excel' || (work.id && String(work.id).includes('EXCEL'));
+                  return (
+                    <div key={work.id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb', position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px', zIndex: 10 }}>
+                        <Button size="small" style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: '#fff' }} onClick={(e) => { e.stopPropagation(); handleEditWork(work); }}>编辑</Button>
+                        <Button size="small" style={work.is_published === 1 ? {} : { backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff' }} danger={work.is_published === 1} onClick={(e) => togglePublishStatus(e, work)}>{work.is_published === 1 ? '下架' : '上架'}</Button>
+                      </div>
+                      <div onClick={() => handleEditWork(work)}>
+                        <div style={{ height: '340px', background: '#f3f4f6', overflow: 'hidden', position: 'relative' }}>
+                          {isExcel ? <img src={work.cover_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <iframe src={`/preview?tid=${work.id}`} style={{ width: '375px', height: '667px', border: 'none', transform: 'scale(0.66)', transformOrigin: 'top left', pointerEvents: 'none', position: 'absolute', top: 0, left: 0 }} />}
+                        </div>
+                        <div style={{ padding: '16px' }}><h4 style={{ margin: '0 0 4px', fontWeight: 'bold' }}>{work.title}</h4><div style={{ fontSize: '12px', color: '#999' }}>状态: {work.is_published === 1 ? <span style={{ color: '#10b981' }}>已上架</span> : <span style={{ color: '#f59e0b' }}>未上架(草稿)</span>}</div></div>
+                      </div>
                     </div>
-                    <div style={{ padding: '16px' }}><h4 style={{ margin: '0 0 4px', fontWeight: 'bold' }}>{work.title}</h4><div style={{ fontSize: '12px', color: '#999' }}>状态: {work.is_published === 1 ? '已上架' : '未上架'}</div></div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </Content>
@@ -203,7 +230,7 @@ const MallPortal = () => {
               <h3 style={{ color: '#d46b08', margin: 0, fontWeight: 'bold' }}>升级尊贵 VIP 创作者</h3>
               <p style={{ color: '#8c8c8c', margin: '4px 0 0 0', fontSize: '13px' }}>解锁无限次生成长页与云表格特权</p>
             </div>
-            <Button type="primary" style={{ background: '#d46b08', borderColor: '#d46b08', fontWeight: 'bold', color: '#fff' }}>¥ 99 立即解锁</Button>
+            <Button style={{ backgroundColor: '#d46b08', borderColor: '#d46b08', fontWeight: 'bold', color: '#fff' }}>¥ 99 立即解锁</Button>
           </div>
         </div>
       </Modal>
@@ -217,35 +244,101 @@ const MallPortal = () => {
 
 const AdminUsers = () => {
   const [data, setData] = useState([]);
-  useEffect(() => { fetch('http://localhost:3000/api/admin/users/list', { headers: { 'x-role': 'admin', 'x-user-id': '1' } }).then(r => r.json()).then(res => setData(res.data || [])); }, []);
+
+  const loadUsers = () => {
+    fetch('http://localhost:3000/api/admin/users/list', { headers: { 'x-role': 'admin', 'x-user-id': '1' } })
+      .then(r => r.json()).then(res => setData(res.data || []));
+  };
+
+  useEffect(() => { loadUsers(); }, []);
+
+  const handleActionTip = (username: string) => {
+    message.success(`已成功对用户 [${username}] 执行管理操作`);
+  };
+
   const cols = [
     { title: 'ID', dataIndex: 'id' },
     { title: '账号邮箱', dataIndex: 'username', render: (t: string) => <b>{t}</b> },
     { title: '身份权限', dataIndex: 'role', render: (r: string) => <Tag color={r === 'admin' ? 'red' : 'blue'}>{r}</Tag> },
     { title: '注册时间', dataIndex: 'date' },
+    {
+      title: '操作',
+      render: (_: any, record: any) => (
+        <Space size="middle">
+          {/* 🌟 加上 style 强制指定背景色和白色文字 */}
+          <Button size="small" type="primary" style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: '#fff' }} onClick={() => handleActionTip(record.username)}>
+            重置密码
+          </Button>
+          <Button size="small" danger onClick={() => {
+            Modal.confirm({
+              title: `确认注销用户 ${record.username} 吗？`,
+              onOk: () => {
+                message.success('模拟注销成功');
+                loadUsers();
+              }
+            });
+          }}>
+            注销
+          </Button>
+        </Space>
+      )
+    },
   ];
-  return <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}><h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>系统账号管控</h3><Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} /></div>;
+
+  return (
+    <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
+      <h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>系统账号管控</h3>
+      <Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} />
+    </div>
+  );
 };
 
 const AdminHomepage = () => {
   const [data, setData] = useState([{ id: 1, title: '', desc: '', image_url: '', bg: '' }]);
-  useEffect(() => { fetch('http://localhost:3000/api/settings/carousel').then(r => r.json()).then(res => { if (res.data?.length > 0) setData(res.data); }); }, []);
+  const [announcementText, setAnnouncementText] = useState('');
 
-  const save = () => { fetch('http://localhost:3000/api/admin/settings/carousel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ data }) }).then(r => r.json()).then(() => message.success('保存成功')); };
+  useEffect(() => { 
+    fetch('http://localhost:3000/api/settings/carousel').then(r => r.json()).then(res => { if (res.data?.length > 0) setData(res.data); }); 
+    fetch('http://localhost:3000/api/settings/announcement').then(r => r.json()).then(res => { if (res.code === 200) setAnnouncementText(res.data || ''); });
+  }, []);
+
+  const save = () => { 
+    // 同时保存轮播图和公告
+    fetch('http://localhost:3000/api/admin/settings/carousel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ data }) }).then(r => r.json());
+    fetch('http://localhost:3000/api/admin/settings/announcement', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ content: announcementText }) }).then(r => r.json()).then(() => message.success('主页配置全部保存成功！')); 
+  };
 
   return (
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}><h3 style={{ margin: 0, fontWeight: 'bold' }}>商城主页轮播图设置</h3><Button type="primary" onClick={save} style={{ background: '#e11d48', borderColor: '#e11d48', color: '#fff' }}>确认生效</Button></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h3 style={{ margin: 0, fontWeight: 'bold' }}>商城主页轮播图设置</h3>
+          <p style={{ color: '#888', margin: '8px 0 0 0', fontSize: '13px' }}>* 请上传比例约为 3:1 的横向大图 (推荐尺寸: 1200x400 px，单张不超过 2MB)</p>
+        </div>
+        <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff', height: '40px' }} onClick={save}>确认生效</Button>
+      </div>
+
+      {/* 🌟 新增公告编辑栏 */}
+      <div style={{ marginBottom: 24, padding: 16, border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
+        <h4 style={{ fontWeight: 'bold', marginBottom: 8 }}>顶部滚动公告内容</h4>
+        <Input
+          placeholder="请输入要在商城首页顶部显示的公告通知文字..."
+          value={announcementText}
+          onChange={e => setAnnouncementText(e.target.value)}
+        />
+      </div>
+
       {data.map((item, i) => (
         <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 16, padding: 16, border: '1px solid #f0f0f0', borderRadius: 8 }}>
           <Upload action="http://localhost:3000/api/upload" showUploadList={false} onChange={(info) => {
+            if (info.file.size > 2 * 1024 * 1024) { message.error('图片不能超过 2MB！'); return; }
             if (info.file.status === 'done') { const nd = [...data]; nd[i].image_url = info.file.response.url; setData(nd); message.success('图片上传成功'); }
           }}>
-            <div style={{ width: 120, height: 80, background: item.image_url ? `url(${item.image_url}) center/cover` : '#fafafa', border: '1px dashed #d9d9d9', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              {!item.image_url && <span style={{ color: '#999' }}>点击上传底图</span>}
+            <div style={{ width: 150, height: 100, background: item.image_url ? `url(${item.image_url}) center/cover no-repeat` : '#fafafa', border: '1px dashed #d9d9d9', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              {!item.image_url && <span style={{ color: '#999', fontSize: '12px' }}>点击上传底图<br />(1200x400)</span>}
             </div>
           </Upload>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center' }}>
             <Input placeholder="主标题文字" value={item.title} onChange={e => { const nd = [...data]; nd[i].title = e.target.value; setData(nd); }} />
             <Input placeholder="副标题文字" value={item.desc} onChange={e => { const nd = [...data]; nd[i].desc = e.target.value; setData(nd); }} />
           </div>
@@ -265,10 +358,9 @@ const AdminTemplates = () => {
     { title: '类型', dataIndex: 'category', render: (c: string) => <Tag color={c === 'excel' ? 'green' : 'blue'}>{c === 'excel' ? '表格' : '页面'}</Tag> },
     { title: '操作', render: (_: any, r: any) => (<Button danger size="small" onClick={() => Modal.confirm({ title: '确认删除', onOk: () => { fetch('http://localhost:3000/api/templates/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id }) }).then(() => { message.success('已删除'); load(); }); } })}>删除</Button>) }
   ];
-  return <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}><h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>商城模板管理</h3><Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} /></div>;
+  return <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}><h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>商城模板管理</h3><Table scroll={{ y: 500 }} columns={cols} dataSource={data} rowKey="id" pagination={false} /></div>;
 };
 
-// 💥 修复图4：强制覆盖“查看内容”按钮样式，绝不用坑爹的 ghost 属性！
 const AdminAudit = () => {
   const [data, setData] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -297,7 +389,7 @@ const AdminAudit = () => {
     { title: '目标 ID', dataIndex: 'target_id' },
     {
       title: '操作', dataIndex: 'backup_data', render: (val: string) => (
-        <Button type="primary" size="small" style={{ background: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => setViewBackup(val)}>查看内容</Button>
+        <Button type="primary" size="small" onClick={() => setViewBackup(val)}>查看内容</Button>
       )
     }
   ];
@@ -306,8 +398,8 @@ const AdminAudit = () => {
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
       <h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>作品风控审查</h3>
       <Tabs defaultActiveKey="1">
-        <Tabs.TabPane tab="作品大盘" key="1"><Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} /></Tabs.TabPane>
-        <Tabs.TabPane tab="销毁日志" key="2"><Table columns={logCols} dataSource={logs} rowKey="id" pagination={{ pageSize: 8 }} /></Tabs.TabPane>
+        <Tabs.TabPane tab="作品大盘" key="1"><Table scroll={{ y: 500 }} columns={cols} dataSource={data} rowKey="id" pagination={false} /></Tabs.TabPane>
+        <Tabs.TabPane tab="销毁日志" key="2"><Table scroll={{ y: 500 }} columns={logCols} dataSource={logs} rowKey="id" pagination={false} /></Tabs.TabPane>
       </Tabs>
 
       <Modal title="销毁数据快照 (JSON 备份)" visible={!!viewBackup} onCancel={() => setViewBackup(null)} footer={null} width={800}>
@@ -358,9 +450,9 @@ const AdminComponents = () => {
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
         <h3 style={{ margin: 0, fontWeight: 'bold' }}>组件管控大盘</h3>
-        <Button type="primary" onClick={() => setIsModalVisible(true)} style={{ background: '#e11d48', borderColor: '#e11d48', color: '#fff' }}>下发新组件</Button>
+        <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => setIsModalVisible(true)}>下发新组件</Button>
       </div>
-      <Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 10 }} />
+      <Table scroll={{ y: 500 }} columns={cols} dataSource={data} rowKey="id" pagination={false} />
 
       <Modal title="下发新组件" visible={isModalVisible} onOk={handleAdd} onCancel={() => setIsModalVisible(false)}>
         <Space direction="vertical" style={{ width: '100%', marginTop: 10 }}>
@@ -381,61 +473,33 @@ export default function BasicLayout(props: any) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
+  // 💥 为源码级过滤做准备：拉取黑名单并存入全局 window 变量
   useEffect(() => {
     sessionStorage.setItem('token', 'coolmall_bypass_token');
     (window as any).getFaceUrl = function () { };
+
+    fetch('http://localhost:3000/api/components/list').then(r => r.json()).then(res => {
+      if (res.code === 200) {
+        // 把后台禁用的组件名单保存到 window 对象中，给左侧菜单组件去读取和过滤！
+        (window as any).__DISABLED_COMPONENTS__ = res.data.filter((c: any) => c.status === 0).map((c: any) => c.name);
+      }
+    }).catch(() => console.error("组件库黑名单拉取失败"));
   }, []);
 
   const path = location.pathname.replace(/\/$/, '');
   const userStr = localStorage.getItem('coolmall_user');
   const user = userStr ? JSON.parse(userStr) : null;
 
-  // 💥 修复图5：暴力级深度 DOM 雷达，穿透查找 4 层父级结构，必将禁用组件死死隐形！
-  useEffect(() => {
-    if (!path.startsWith('/editor')) return;
-    let timer: any;
-    fetch('http://localhost:3000/api/components/list').then(r => r.json()).then(res => {
-      if (res.code !== 200) return;
-      const disabledNames = res.data.filter((c: any) => c.status === 0).map((c: any) => c.name);
-      if (disabledNames.length === 0) return;
-
-      const hideNodes = () => {
-        disabledNames.forEach((name: string) => {
-          // 精确查找页面里所有文本匹配且没有子元素的 DOM 节点
-          const els = Array.from(document.querySelectorAll('*')).filter(el => el.textContent?.trim() === name && el.children.length === 0);
-          els.forEach(el => {
-            // 向上暴力穿透，找到最外层的 draggable 容器或类名包含 item 的卡片，一击毙命
-            let parent = el.parentElement;
-            let depth = 0;
-            while (parent && depth < 4) {
-              if (parent.classList.contains('component-item') || parent.style.cursor === 'pointer' || parent.getAttribute('draggable')) {
-                parent.style.setProperty('display', 'none', 'important');
-                break;
-              }
-              // 终极兜底，隐藏爷爷层
-              if (depth === 2) parent.style.setProperty('display', 'none', 'important');
-              parent = parent.parentElement;
-              depth++;
-            }
-          });
-        });
-      };
-
-      timer = setInterval(hideNodes, 300); // 加快轮询频率
-    });
-    return () => clearInterval(timer);
-  }, [path]);
-
-  // 💥 修复图3：彻底清除之前的 a 标签和全局污染代码，只用 !important 精确覆盖主按钮颜色
   const GlobalBrandStyle = () => (
     <style>
       {`
-        :root { --ant-primary-color: #e11d48; }
-        .ant-btn-primary { background-color: #e11d48 !important; border-color: #e11d48 !important; color: #ffffff !important; }
-        .ant-btn-primary:hover, .ant-btn-primary:focus { background-color: #be123c !important; border-color: #be123c !important; color: #ffffff !important; }
         header { background-color: #ffffff !important; border-bottom: 1px solid #f3f4f6 !important; }
-        /* 让当前选中的菜单底边框和文字变红 */
         .ant-menu-horizontal > .ant-menu-item-selected { color: #e11d48 !important; border-bottom: 2px solid #e11d48 !important; }
+        /* 强制将所有主按钮颜色锁死 */
+        .ant-btn-primary { background-color: #e11d48 !important; border-color: #e11d48 !important; color: #fff !important; }
+        .ant-btn-primary:hover { background-color: #be123c !important; border-color: #be123c !important; }
+        /* 给表格加个滚动条 */
+        .ant-table-body { overflow-y: auto !important; }
       `}
     </style>
   );

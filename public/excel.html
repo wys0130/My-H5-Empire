@@ -4,13 +4,14 @@
 <head>
     <meta charset="utf-8">
     <title>酷猫商业级 Excel 引擎</title>
-    <!-- 极客降维：直接通过 CDN 引入开源黑盒，绕过复杂的 npm 编译依赖 -->
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/css/pluginsCss.css' />
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/plugins.css' />
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet/dist/css/luckysheet.css' />
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/luckysheet/dist/assets/iconfont/iconfont.css' />
     <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/plugins/js/plugin.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luckysheet/dist/luckysheet.umd.js"></script>
+
+    <!-- 引入你本地的 JS 引擎 -->
+    <script src="/luckysheet.umd.js"></script>
     <style>
         body {
             margin: 0;
@@ -35,29 +36,21 @@
     <div id="luckysheet"></div>
     <script>
         window.onload = function () {
-            // 💥 极客操作：在黑盒启动前，先去缓存里把大厅传过来的数据偷出来
             var pendingData = localStorage.getItem('coolmall_pending_tpl');
             var sheetData = [];
 
-            // 疯狂脱壳解析数据
             if (pendingData && pendingData !== 'undefined' && pendingData !== '[]') {
                 try {
                     var parsed = JSON.parse(pendingData);
-                    while (typeof parsed === 'string') {
-                        parsed = JSON.parse(parsed);
-                    }
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        sheetData = parsed;
-                    }
+                    while (typeof parsed === 'string') { parsed = JSON.parse(parsed); }
+                    if (Array.isArray(parsed) && parsed.length > 0) { sheetData = parsed; }
                 } catch (e) {
                     console.error('Excel 数据解析失败', e);
                 }
             }
 
-            // 阅后即焚，保持干净
             localStorage.removeItem('coolmall_pending_tpl');
 
-            // 引擎配置参数
             var options = {
                 container: 'luckysheet',
                 title: '酷猫云表格',
@@ -65,7 +58,6 @@
                 showinfobar: false,
             };
 
-            // 如果有历史数据，直接灌进引擎里！
             if (sheetData.length > 0) {
                 options.data = sheetData;
             }

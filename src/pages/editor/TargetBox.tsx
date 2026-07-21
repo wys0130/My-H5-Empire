@@ -10,6 +10,7 @@ import { Dispatch } from 'umi';
 import { StateWithHistory } from 'redux-undo';
 import { Menu, Item, MenuProvider } from 'react-contexify';
 import 'react-contexify/dist/ReactContexify.min.css';
+
 interface SourceBoxProps {
   pstate: { pointData: { id: string; item: any; point: any; isMenu?: any }[]; curPoint: any };
   cstate: { pointData: { id: string; item: any; point: any }[]; curPoint: any };
@@ -18,22 +19,24 @@ interface SourceBoxProps {
   allType: string[];
   dispatch: Dispatch;
   dragState: { x: number; y: number };
-  setDragState: React.Dispatch<
-    React.SetStateAction<{
-      x: number;
-      y: number;
-    }>
-  >;
+  setDragState: React.Dispatch<React.SetStateAction<{ x: number; y: number; }>>;
+  disabledTypes?: string[];
 }
 
 const TargetBox = memo((props: SourceBoxProps) => {
-  const { pstate, scaleNum, canvasId, allType, dispatch, dragState, setDragState, cstate } = props;
+  const { pstate, scaleNum, canvasId, allType, dispatch, dragState, setDragState, cstate, disabledTypes = [] } = props;
 
-  let pointData = pstate ? pstate.pointData : [];
+  let rawPointData = pstate ? pstate.pointData : [];
   const cpointData = cstate ? cstate.pointData : [];
+
+  // 🌟 画布渲染前的最后一道物理拦截
+  const pointData = useMemo(() => {
+    return rawPointData.filter((pt: any) => !disabledTypes.includes(pt.item?.type));
+  }, [rawPointData, disabledTypes]);
 
   const [canvasRect, setCanvasRect] = useState<number[]>([]);
   const [isShowTip, setIsShowTip] = useState(true);
+
   const [{ isOver }, drop] = useDrop({
     accept: allType,
     drop: (item: { h: number; type: string; x: number }, monitor) => {
@@ -45,7 +48,6 @@ const TargetBox = memo((props: SourceBoxProps) => {
         col = 24, // 网格列数
         cellHeight = 2,
         w = item.type === 'Icon' ? 3 : col;
-      // 转换成网格规则的坐标和大小
       let gridY = Math.ceil(y / cellHeight);
       dispatch({
         type: 'editorModal/addPointData',
@@ -67,30 +69,36 @@ const TargetBox = memo((props: SourceBoxProps) => {
   const dragStop: ItemCallback = useMemo(() => {
     return (layout, oldItem, newItem, placeholder, e, element) => {
       const curPointData = pointData.filter(item => item.id === newItem.i)[0];
-      dispatch({
-        type: 'editorModal/modPointData',
-        payload: { ...curPointData, point: newItem, status: 'inToCanvas' },
-      });
+      if (curPointData) {
+        dispatch({
+          type: 'editorModal/modPointData',
+          payload: { ...curPointData, point: newItem, status: 'inToCanvas' },
+        });
+      }
     };
   }, [cpointData, dispatch, pointData]);
 
   const onDragStart: ItemCallback = useMemo(() => {
     return (layout, oldItem, newItem, placeholder, e, element) => {
       const curPointData = pointData.filter(item => item.id === newItem.i)[0];
-      dispatch({
-        type: 'editorModal/modPointData',
-        payload: { ...curPointData, status: 'inToCanvas' },
-      });
+      if (curPointData) {
+        dispatch({
+          type: 'editorModal/modPointData',
+          payload: { ...curPointData, status: 'inToCanvas' },
+        });
+      }
     };
   }, [dispatch, pointData]);
 
   const onResizeStop: ItemCallback = useMemo(() => {
     return (layout, oldItem, newItem, placeholder, e, element) => {
       const curPointData = pointData.filter(item => item.id === newItem.i)[0];
-      dispatch({
-        type: 'editorModal/modPointData',
-        payload: { ...curPointData, point: newItem, status: 'inToCanvas' },
-      });
+      if (curPointData) {
+        dispatch({
+          type: 'editorModal/modPointData',
+          payload: { ...curPointData, point: newItem, status: 'inToCanvas' },
+        });
+      }
     };
   }, [dispatch, pointData]);
 
