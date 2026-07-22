@@ -442,8 +442,28 @@ const AdminAudit = () => {
     { title: '类型', dataIndex: 'action', render: () => <Tag color="red">删除</Tag> },
     { title: '目标 ID', dataIndex: 'target_id' },
     {
-      title: '操作', dataIndex: 'backup_data', render: (val: string) => (
-        <Button type="primary" size="small" onClick={() => setViewBackup(val)}>查看内容</Button>
+      title: '操作',
+      render: (_: any, r: any) => (
+        <Space size="middle">
+          <Button type="primary" size="small" onClick={() => setViewBackup(r.backup_data)}>查看内容</Button>
+          <Button danger size="small" onClick={() => {
+            Modal.confirm({
+              title: '确认删除这条日志吗？',
+              onOk: () => {
+                fetch('http://localhost:3000/api/admin/operation-logs/delete', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
+                  body: JSON.stringify({ id: r.id })
+                }).then(r => r.json()).then(res => {
+                  if (res.code === 200) {
+                    message.success('日志已删除');
+                    load(); // 重新加载日志列表
+                  }
+                });
+              }
+            });
+          }}>删除</Button>
+        </Space>
       )
     }
   ];
