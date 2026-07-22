@@ -230,7 +230,17 @@ const MallPortal = () => {
               <h3 style={{ color: '#d46b08', margin: 0, fontWeight: 'bold' }}>升级尊贵 VIP 创作者</h3>
               <p style={{ color: '#8c8c8c', margin: '4px 0 0 0', fontSize: '13px' }}>解锁无限次生成长页与云表格特权</p>
             </div>
-            <Button style={{ backgroundColor: '#d46b08', borderColor: '#d46b08', fontWeight: 'bold', color: '#fff' }}>¥ 99 立即解锁</Button>
+            {/* 🌟 修改这里的按钮事件：点击跳转到你的爱发电主页 */}
+            <Button
+              style={{ backgroundColor: '#d46b08', borderColor: '#d46b08', fontWeight: 'bold', color: '#fff' }}
+              onClick={() => {
+                // 请将下方的链接替换为你自己在爱发电注册的创作者主页链接
+                window.open('https://ifdian.net/order/create?plan_id=684e74ba84e811f1a89752540025c377&product_type=0&remark=&affiliate_code=&fr=afcom', '_blank');
+                message.info('请在爱发电完成支付，支付后联系管理员为您手动开通权限！');
+              }}
+            >
+              ¥ 9.9 立即解锁 (爱发电)
+            </Button>
           </div>
         </div>
       </Modal>
@@ -244,6 +254,8 @@ const MallPortal = () => {
 
 const AdminUsers = () => {
   const [data, setData] = useState([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'user' });
 
   const loadUsers = () => {
     fetch('http://localhost:3000/api/admin/users/list', { headers: { 'x-role': 'admin', 'x-user-id': '1' } })
@@ -251,6 +263,36 @@ const AdminUsers = () => {
   };
 
   useEffect(() => { loadUsers(); }, []);
+
+  const handleCreateUser = () => {
+    if (!newUser.username || !newUser.password) {
+      message.warning('请填写完整的邮箱和密码！');
+      return;
+    }
+
+    message.loading({ content: '正在创建账号...', key: 'create-user' });
+
+    fetch('http://localhost:3000/api/admin/users/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
+      body: JSON.stringify(newUser)
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.code === 200) {
+          message.success({ content: '🎉 新账号创建成功！', key: 'create-user' });
+          setIsModalVisible(false);
+          setNewUser({ username: '', password: '', role: 'user' });
+          loadUsers();
+        } else {
+          message.error({ content: res.msg || '创建失败', key: 'create-user' });
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        message.error({ content: '后端连接异常，请检查 server.js 是否启动', key: 'create-user' });
+      });
+  };
 
   const handleActionTip = (username: string) => {
     message.success(`已成功对用户 [${username}] 执行管理操作`);
@@ -265,7 +307,6 @@ const AdminUsers = () => {
       title: '操作',
       render: (_: any, record: any) => (
         <Space size="middle">
-          {/* 🌟 加上 style 强制指定背景色和白色文字 */}
           <Button size="small" type="primary" style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: '#fff' }} onClick={() => handleActionTip(record.username)}>
             重置密码
           </Button>
@@ -287,8 +328,21 @@ const AdminUsers = () => {
 
   return (
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
-      <h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>系统账号管控</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h3 style={{ margin: 0, fontWeight: 'bold' }}>系统账号管控</h3>
+        <Button type="primary" style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => setIsModalVisible(true)}>
+          新增账号
+        </Button>
+      </div>
+
       <Table columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} />
+
+      <Modal title="管理员手动新增账号" visible={isModalVisible} onOk={handleCreateUser} onCancel={() => setIsModalVisible(false)} okText="确认创建" cancelText="取消">
+        <Space direction="vertical" style={{ width: '100%', marginTop: 10 }} size="large">
+          <Input placeholder="输入用户邮箱 (例如: user@qq.com)" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} />
+          <Input.Password placeholder="输入登录密码" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} />
+        </Space>
+      </Modal>
     </div>
   );
 };
