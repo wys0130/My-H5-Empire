@@ -30,7 +30,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const userStr = localStorage.getItem('coolmall_user');
   const user = userStr ? JSON.parse(userStr) : null;
   const isAdmin = user?.role === 'admin';
-  const [showHintBubble, setShowHintBubble] = useState(true);
 
   const uploadprops = useMemo(() => ({
     name: 'file',
@@ -45,7 +44,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     },
   }), [importTpl]);
 
-  const [modalConfig, setModalConfig] = useState<{ visible: boolean, type: 'template' | 'publish' }>({ visible: false, type: 'template' });
+  const [modalConfig, setModalConfig] = useState<{ visible: boolean }>({ visible: false });
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [faceUrl, setFaceUrl] = useState('');
   const [saveTplName, setSaveTplName] = useState('');
@@ -94,55 +93,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     }
   };
 
-  const openTemplateModal = () => {
-    setModalConfig({ visible: true, type: 'template' });
-    if (!faceUrl) autoGenerateCover(true);
-  };
-
   const openPublishModal = () => {
-    setModalConfig({ visible: true, type: 'publish' });
+    setModalConfig({ visible: true });
     if (!faceUrl) autoGenerateCover(true);
-  };
-
-  const handleModalOk = () => {
-    if (modalConfig.type === 'template') executeCloudSave();
-    else handlePublishH5();
-  };
-
-  // 💥 修复“保存为组件报错”的核心：附带完备的用户凭证请求头，并且安全解析响应，彻底告别盲目红框！
-  const executeCloudSave = async () => {
-    if (!saveTplName) return message.warning('请填写模板名称！');
-    if (!faceUrl) return message.warning('封面生成中，请稍后...');
-
-    let safeData = [];
-    try { safeData = JSON.parse(JSON.stringify(pointData)); } catch (e) { }
-    if (!Array.isArray(safeData)) safeData = [];
-
-    message.loading({ content: '同步中...', key: 'save' });
-    try {
-      const response = await fetch('http://localhost:3000/api/templates/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-role': user?.role || 'user',
-          'x-user-id': user?.userId?.toString() || '1'
-        },
-        body: JSON.stringify({ title: saveTplName, cover_url: faceUrl, json_data: safeData, category: 'h5' })
-      });
-
-      const res = await response.json(); // 解析后端传来的JSON (无论是200还是500)
-
-      if (res.code === 200) {
-        message.success({ content: '🎉 已加入组件库，可打开查看', key: 'save', duration: 3 });
-        setModalConfig({ visible: false, type: 'template' });
-        setSaveTplName('');
-      } else {
-        message.error({ content: res.msg || '保存失败', key: 'save' });
-      }
-    } catch (err) {
-      message.error({ content: '后端连接异常', key: 'save' });
-      console.error(err);
-    }
   };
 
   const handlePublishH5 = async () => {
@@ -159,89 +112,21 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
     if (res.code === 200) {
       message.success({ content: '🚀 已存入您的私有草稿箱！', key: 'publish', duration: 3 });
-      setModalConfig({ visible: false, type: 'publish' });
+      setModalConfig({ visible: false });
       setSaveTplName('');
       if (!props.location.query?.tid) history.replace(`/editor?tid=${workId}`);
     } else message.error({ content: res.msg, key: 'publish', duration: 3 });
   };
 
-  const useTemplate = async () => {
-    message.loading({ content: '拉取数据...', key: 'fetch' });
-    try {
-      const res = await fetch('http://localhost:3000/api/templates/list').then(r => r.json());
-      message.destroy('fetch');
-
-      const savedTpls = (res.data || []).filter((t: any) => !String(t.id).includes('_'));
-
-      const modal = Modal.info({
-        title: '组件库', width: 800, icon: null, okText: '关闭',
-        content: (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '20px', maxHeight: '500px', overflowY: 'auto' }}>
-            {savedTpls.length === 0 ? <Result status="404" title="暂无数据" style={{ width: '100%' }} /> : null}
-            {savedTpls.map((tpl: any) => (
-              <div
-                key={tpl.id}
-                style={{ width: '180px', border: '1px solid #e8e8e8', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.3s', position: 'relative' }}
-                onClick={() => {
-                  if (tpl.category === 'excel') {
-                    localStorage.setItem('coolmall_pending_tpl', tpl.json_data || '[]');
-                    message.success('前往表格编辑器...');
-                    modal.destroy();
-                    setTimeout(() => history.push('/excel'), 600);
-                    return;
-                  }
-
-                  if (importTpl) {
-                    try {
-                      let parsedData = tpl.json_data;
-                      while (typeof parsedData === 'string') {
-                        try { parsedData = JSON.parse(parsedData); } catch (e) { break; }
-                      }
-                      if (!parsedData) parsedData = [];
-                      if (!Array.isArray(parsedData)) parsedData = [parsedData];
-
-                      importTpl(parsedData);
-                      message.success('组件导入成功！');
-                      modal.destroy();
-                    } catch (err) { message.error('数据异常'); }
-                  }
-                }}
-              >
-                <div style={{ position: 'absolute', top: 8, right: 8, background: '#ff4d4f', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', zIndex: 10 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    Modal.confirm({
-                      title: '确认删除？',
-                      onOk: async () => {
-                        await fetch('http://localhost:3000/api/templates/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tpl.id }) });
-                        message.success('已删除'); modal.destroy(); useTemplate();
-                      }
-                    });
-                  }}>删除</div>
-                <img src={tpl.cover_url} style={{ width: '100%', height: '260px', objectFit: 'cover' }} alt={tpl.title} />
-                <div style={{ padding: '12px' }}><h4 style={{ margin: '0 0 8px 0', fontSize: '14px', overflow: 'hidden', whiteSpace: 'nowrap' }}>{tpl.title}</h4></div>
-              </div>
-            ))}
-          </div>
-        ),
-      });
-    } catch (e) { message.error({ content: '网络异常', key: 'fetch' }); }
-  };
-
   const downLoadJson = () => saveAs(new Blob([JSON.stringify(pointData)], { type: 'text/plain;charset=utf-8' }), 'template.json');
   const deleteAll = () => Modal.confirm({ title: '确认清空画布?', onOk() { clearData(); } });
-  const toHelp = () => { const a = document.createElement('a'); a.href = 'https://dooring.vip/doc'; a.target = '_blank'; a.click(); };
   const toBack = () => history.push('/mall');
 
   const newPage = () => {
     if (!pointData || !pointData.length) {
       clearData(); message.success('新建空白画布成功'); return;
     }
-    confirm({
-      title: '新建提醒', content: '未保存的内容会丢失，继续新建吗？',
-      okText: '确认新建', cancelText: '取消',
-      onOk() { clearData(); message.success('新建成功'); }
-    });
+    confirm({ title: '新建提醒', content: '未保存的内容会丢失，继续新建吗？', okText: '确认新建', cancelText: '取消', onOk() { clearData(); message.success('新建成功'); } });
   };
 
   const savePreview = () => req.post('/visible/preview', { tid: props.location.query?.tid || '', tpl: pointData });
@@ -295,8 +180,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       <div className={`hide-scroll ${styles.controlArea}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflowX: 'auto', whiteSpace: 'nowrap' }}>
         <Button type="default" onClick={() => history.push('/mall')} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>🏠 返回</Button>
-        <Button type="primary" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} onClick={useTemplate}>组件库</Button>
-        <Button type="default" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} onClick={openTemplateModal} disabled={!pointData.length}>保存组件</Button>
+        {/* 🌟 严格按照图片3要求：已删除“组件库”和“保存组件”按钮 */}
 
         <MyPopover content={content()} directions="BOTTOM">
           <Button type="default" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
@@ -332,9 +216,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       </Modal>
 
       <Modal
-        title={modalConfig.type === 'template' ? '💾 保存为组件' : '🚀 保存草稿'}
+        title={'🚀 保存草稿'}
         visible={modalConfig.visible}
-        onOk={handleModalOk}
+        onOk={handlePublishH5}
         onCancel={() => setModalConfig({ ...modalConfig, visible: false })}
         okText="保存"
         cancelText="取消"
