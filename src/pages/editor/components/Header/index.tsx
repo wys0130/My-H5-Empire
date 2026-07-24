@@ -47,7 +47,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [modalConfig, setModalConfig] = useState<{ visible: boolean }>({ visible: false });
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [faceUrl, setFaceUrl] = useState('');
-  const [saveTplName, setSaveTplName] = useState('');
+
+  // 🌟 自动读取来自商城的作品原名称
+  const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
   const captureCanvas = async (scaleMultiplier: number) => {
@@ -69,8 +71,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     if (!isSilent) message.loading({ content: '抓取封面中...', key: 'poster', duration: 0 });
 
     try {
-      // ⚠️ 绝杀修复：绝对不能传带有旧ID的 tid 给后端！彻底斩断与旧数据的联系！
-      const previewUrl = `${window.location.protocol}//${window.location.host}/preview?gf=1&_t=${Date.now()}`;
+      const tid = props.location.query?.tid || '';
+      const previewUrl = `${window.location.protocol}//${window.location.host}/preview?tid=${tid}&gf=1`;
 
       const res = await fetch('http://localhost:3000/api/render/screenshot', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -113,8 +115,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     if (res.code === 200) {
       message.success({ content: '🚀 已存入您的私有草稿箱！', key: 'publish', duration: 3 });
       setModalConfig({ visible: false });
-      setSaveTplName('');
-      if (!props.location.query?.tid) history.replace(`/editor?tid=${workId}`);
+      if (!props.location.query?.tid) {
+        window.location.href = `/editor?tid=${workId}`;
+      }
     } else message.error({ content: res.msg, key: 'publish', duration: 3 });
   };
 
@@ -122,11 +125,29 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const deleteAll = () => Modal.confirm({ title: '确认清空画布?', onOk() { clearData(); } });
   const toBack = () => history.push('/mall');
 
+  // 🌟 核心修复：彻底清理旧模板的一切根源缓存
+  const executeNewPage = () => {
+    clearData();
+    setSaveTplName('');
+    localStorage.removeItem('coolmall_current_title');
+    localStorage.removeItem('pointData');
+    localStorage.removeItem('coolmall_pending_tpl'); // 必须清空这个！底层引擎就是认的它
+
+    // 强制跳转清理 URL 参数，重载内存
+    window.location.href = '/editor';
+  };
+
   const newPage = () => {
     if (!pointData || !pointData.length) {
-      clearData(); message.success('新建空白画布成功'); return;
+      executeNewPage();
+      return;
     }
-    confirm({ title: '新建提醒', content: '未保存的内容会丢失，继续新建吗？', okText: '确认新建', cancelText: '取消', onOk() { clearData(); message.success('新建成功'); } });
+    confirm({
+      title: '新建提醒', content: '未保存的内容会丢失，继续新建吗？', okText: '确认新建', cancelText: '取消',
+      onOk() {
+        executeNewPage();
+      }
+    });
   };
 
   const savePreview = () => req.post('/visible/preview', { tid: props.location.query?.tid || '', tpl: pointData });
@@ -159,7 +180,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     <Menu>
       <Menu.Item key="1" icon={<UploadOutlined />}><Upload {...uploadprops} showUploadList={false}><span style={{ color: 'inherit' }}>导入 JSON</span></Upload></Menu.Item>
       <Menu.Item key="2" icon={<CopyOutlined />} onClick={downLoadJson} disabled={!pointData.length}>下载 JSON</Menu.Item>
-      <Menu.Item key="3" icon={<FileAddOutlined />} onClick={newPage} disabled={!pointData.length}>新建页面</Menu.Item>
+      <Menu.Item key="3" icon={<FileAddOutlined />} onClick={newPage}>新建页面</Menu.Item>
       <Menu.Divider />
       <Menu.Item key="4" icon={<UndoOutlined />} onClick={undohandler} disabled={!pointData.length}>撤销</Menu.Item>
       <Menu.Item key="5" icon={<RedoOutlined />} onClick={redohandler} disabled={!pointData.length}>重做</Menu.Item>
@@ -170,28 +191,36 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   );
 
   return (
-    <div className={styles.header} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '64px', background: '#fff', borderBottom: '1px solid #f0f0f0', width: '100%', boxSizing: 'border-box' }}>
-      <style>{`.hide-scroll::-webkit-scrollbar { display: none; }`}</style>
+    <div className={styles.header}>
+      <div className={styles.logoArea}>
+        <div onClick={toBack} className={styles.backBtn}><ArrowLeftOutlined style={{ fontSize: '18px', color: '#999' }} /></div>
+        <div className={styles.logo}></div>
 
-      <div className={styles.logoArea} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '16px', paddingRight: '12px' }}>
-        <div onClick={toBack} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#999' }}><ArrowLeftOutlined style={{ fontSize: '18px' }} /></div>
-        <img src="/logo.png" alt="Logo" style={{ height: '32px', objectFit: 'contain' }} onError={(e) => e.currentTarget.style.display = 'none'} />
+        {/* 🌟 配合 Less，这里已完美融入，不会再挤压右侧按钮 */}
+        <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #eaeaea', paddingLeft: '16px', marginLeft: '16px' }}>
+          <span style={{ color: '#999', fontSize: '13px', marginRight: '8px', whiteSpace: 'nowrap' }}>当前作品:</span>
+          <Input
+            value={saveTplName}
+            onChange={e => setSaveTplName(e.target.value)}
+            bordered={false}
+            placeholder="未命名作品"
+            style={{ width: '160px', fontWeight: 'bold', color: '#e11d48', padding: '0 4px', borderBottom: '1px dashed #e11d48', borderRadius: 0 }}
+          />
+        </div>
       </div>
 
-      <div className={`hide-scroll ${styles.controlArea}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflowX: 'auto', whiteSpace: 'nowrap' }}>
-        <Button type="default" onClick={() => history.push('/mall')} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>🏠 返回</Button>
-
+      <div className={styles.controlArea}>
+        <Button type="default" onClick={() => history.push('/mall')}>🏠 返回</Button>
         <MyPopover content={content()} directions="BOTTOM">
-          <Button type="default" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
+          <Button type="default" disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
         </MyPopover>
-        <Button type="default" onClick={toPreview} disabled={!pointData.length} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>电脑预览</Button>
-
+        <Button type="default" onClick={toPreview} disabled={!pointData.length}>电脑预览</Button>
         <Dropdown overlay={moreMenu} placement="bottomCenter" trigger={['click']}>
-          <Button style={{ display: 'flex', alignItems: 'center', flexShrink: 0, padding: '4px 15px' }}>更多 <DownOutlined style={{ marginLeft: 4 }} /></Button>
+          <Button>更多 <DownOutlined style={{ marginLeft: 4 }} /></Button>
         </Dropdown>
       </div>
 
-      <div className={styles.btnArea} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '12px', paddingLeft: '16px', background: '#fff', zIndex: 999, minWidth: 'max-content', whiteSpace: 'nowrap' }}>
+      <div className={styles.btnArea}>
         <Button onClick={() => history.push('/mall?tab=my')} style={{ borderColor: '#e11d48', color: '#e11d48' }}>
           我的作品
         </Button>
