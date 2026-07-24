@@ -1,98 +1,105 @@
 /*
- * @Description: 添加键盘快捷键
- * @Version: 2.1
- * @Autor: xuxiaoxi
+ * @Description: 智能动态隔离草稿舱，完美兼容【防崩溃恢复】与【绝对防串包】
+ * @Version: 4.0 满血版
  */
 import { uuid } from '@/utils/tool';
 import key from 'keymaster';
 
-// 🌟 终极防爆破：不论大厅传过来什么妖魔鬼怪，都必须洗成干净的数组
-let safeData = [];
-try {
-  let pendingTpl = localStorage.getItem('coolmall_pending_tpl');
-  let rawData = pendingTpl || localStorage.getItem('userData');
-
-  if (rawData && rawData !== 'undefined' && rawData !== 'null') {
-    let parsed = JSON.parse(rawData);
-    // 兼容双重序列化的幽灵字符串
-    if (typeof parsed === 'string') parsed = JSON.parse(parsed);
-    if (Array.isArray(parsed)) safeData = parsed;
-  }
-} catch (error) {
-  console.error("模板数据解析失败，已强制重置为空画布", error);
+// 🌟 核心引擎：动态获取专属保险箱名称
+function getDraftKey() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tid = urlParams.get('tid') || 'blank_page'; // 没 tid 的统统认为是新建白板页
+  return `coolmall_draft_h5_${tid}`;
 }
-// 阅后即焚
-localStorage.removeItem('coolmall_pending_tpl');
 
-function overSave(name, data) {
-  localStorage.setItem(name, JSON.stringify(data));
+// 🌟 数据分发总闸
+function getSafeData() {
+  try {
+    const draftKey = getDraftKey();
+
+    // 【最高优先级 1】: 如果商城大厅发来了“强制新建”的令牌，一刀切成白纸！
+    if (localStorage.getItem('FORCE_CLEAR_CANVAS') === '1') {
+      localStorage.removeItem('FORCE_CLEAR_CANVAS');
+      localStorage.removeItem('coolmall_pending_tpl');
+      localStorage.removeItem(draftKey); // 顺手把之前遗留的新建草稿也扬了
+      return [];
+    }
+
+    // 【云端优先级 2】: 从商城大盘点进来的（携带专属待办数据），绝对优先使用！
+    const pendingTpl = localStorage.getItem('coolmall_pending_tpl');
+    if (pendingTpl && pendingTpl !== 'undefined' && pendingTpl !== 'null') {
+      let parsed = JSON.parse(pendingTpl);
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed); // 破除双重序列化
+
+      if (Array.isArray(parsed)) {
+        localStorage.removeItem('coolmall_pending_tpl'); // 读完即焚
+        localStorage.setItem(draftKey, JSON.stringify(parsed)); // 把云端真实数据覆盖到当前作品的专属草稿箱
+        return parsed;
+      }
+    }
+
+    // 【崩溃恢复优先级 3】: 没有强制新建，也没有大盘传入，说明你是按了 F5 刷新，或者断电恢复网页
+    // 此时精准去【当前作品的专属草稿箱】里读取，完美防丢失且绝不串包！
+    const localDraft = localStorage.getItem(draftKey);
+    if (localDraft && localDraft !== 'undefined' && localDraft !== 'null') {
+      let parsed = JSON.parse(localDraft);
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (error) {
+    console.error("数据解析失败，已重置为安全白板", error);
+  }
+  return [];
+}
+
+const safeData = getSafeData();
+
+// 🌟 智能专属覆盖机制
+function overSave(data) {
+  const draftKey = getDraftKey();
+  localStorage.setItem(draftKey, JSON.stringify(data));
 }
 
 export default {
   namespace: 'editorModal',
   state: {
-    // 这里直接传入洗干净的 safeData，绝对不可能再出现 undefined
     pointData: safeData,
     curPoint: null,
   },
   reducers: {
     addPointData(state, { payload }) {
       let pointData = [...state.pointData, payload];
-      overSave('userData', pointData);
-      return {
-        ...state,
-        pointData,
-        curPoint: payload,
-      };
+      overSave(pointData); // 实时存入当前专属草稿箱！
+      return { ...state, pointData, curPoint: payload };
     },
     modPointData(state, { payload }) {
       const { id } = payload;
       const pointData = state.pointData.map(item => {
-        if (item.id === id) {
-          return payload;
-        }
+        if (item.id === id) return payload;
         return { ...item };
       });
-      overSave('userData', pointData);
-      return {
-        ...state,
-        pointData,
-        curPoint: payload,
-      };
+      overSave(pointData);
+      return { ...state, pointData, curPoint: payload };
     },
     importTplData(state, { payload }) {
-      overSave('userData', payload);
-      return {
-        ...state,
-        pointData: payload,
-        curPoint: null,
-      };
+      overSave(payload);
+      return { ...state, pointData: payload, curPoint: null };
     },
     copyPointData(state, { payload }) {
       const { id } = payload;
       const pointData = [];
       state.pointData.forEach(item => {
         pointData.push({ ...item });
-        if (item.id === id) {
-          pointData.push({ ...item, id: uuid(6, 10) });
-        }
+        if (item.id === id) pointData.push({ ...item, id: uuid(6, 10) });
       });
-      overSave('userData', pointData);
-
-      return {
-        ...state,
-        pointData,
-      };
+      overSave(pointData);
+      return { ...state, pointData };
     },
     delPointData(state, { payload }) {
       const { id } = payload;
       const pointData = state.pointData.filter(item => item.id !== id);
-      overSave('userData', pointData);
-      return {
-        ...state,
-        pointData,
-        curPoint: null,
-      };
+      overSave(pointData);
+      return { ...state, pointData, curPoint: null };
     },
     keyboardCopyPointData(state) {
       if (state.curPoint) {
@@ -100,16 +107,10 @@ export default {
         const pointData = [];
         state.pointData.forEach(item => {
           pointData.push({ ...item });
-          if (item.id === id) {
-            pointData.push({ ...item, id: uuid(6, 10) });
-          }
+          if (item.id === id) pointData.push({ ...item, id: uuid(6, 10) });
         });
-        overSave('userData', pointData);
-
-        return {
-          ...state,
-          pointData,
-        };
+        overSave(pointData);
+        return { ...state, pointData };
       }
       return state;
     },
@@ -117,42 +118,24 @@ export default {
       if (state.curPoint) {
         const { id } = state.curPoint;
         const pointData = state.pointData.filter(item => item.id !== id);
-        overSave('userData', pointData);
-        return {
-          ...state,
-          pointData,
-          curPoint: null,
-        };
+        overSave(pointData);
+        return { ...state, pointData, curPoint: null };
       }
       return state;
     },
     clearAll(state) {
-      overSave('userData', []);
-      return {
-        ...state,
-        pointData: [],
-        curPoint: null,
-      };
+      overSave([]); // F5刷新也会是白板
+      return { ...state, pointData: [], curPoint: null };
     },
   },
   effects: {},
   subscriptions: {
     setup({ dispatch, history }) {
-      return history.listen(({ pathname, query }) => {});
+      return history.listen(({ pathname, query }) => { });
     },
     keyEvent({ dispatch, state }) {
-      // 复制
-      key('⌘+c, ctrl+c', () => {
-        dispatch({
-          type: 'editorModal/keyboardCopyPointData',
-        });
-      });
-      // 删除
-      key('delete, backspace', () => {
-        dispatch({
-          type: 'editorModal/keyboardDelPointData',
-        });
-      });
+      key('⌘+c, ctrl+c', () => { dispatch({ type: 'editorModal/keyboardCopyPointData' }); });
+      key('delete, backspace', () => { dispatch({ type: 'editorModal/keyboardDelPointData' }); });
     },
   },
 };

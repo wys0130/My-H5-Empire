@@ -63,7 +63,7 @@ const FormEditor = (props: FormEditorProps) => {
       initialValues={defaultValue}
       onValuesChange={handlechange}
     >
-      {config.map((item, i) => {
+      {(config || []).map((item, i) => {
         return (
           <React.Fragment key={i}>
             {item.type === 'Number' && (

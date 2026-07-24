@@ -7,7 +7,6 @@ import Dashboard from '@/pages/dashboard';
 import Finance from '@/pages/finance';
 import ExcelEditor from '@/pages/excel/index';
 
-// ⚠️ 关键修复：这句代码之前挡在了 import 前面，导致了 200 多个模块找不到的报错！现已修复！
 message.config({ top: 70, maxCount: 3 });
 
 const { Header, Sider, Content } = Layout;
@@ -41,11 +40,12 @@ const MallPortal = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  // 🌟 核心修复1：将传输通道更正回 coolmall_pending_tpl
   const handleUseTemplate = (tpl: any) => {
     let schemaStr = tpl.json_data || '[]';
     if (typeof schemaStr !== 'string') schemaStr = JSON.stringify(schemaStr);
 
-    localStorage.setItem('pointData', schemaStr);
+    localStorage.setItem('coolmall_pending_tpl', schemaStr);
     localStorage.setItem('coolmall_current_title', tpl.title || '');
     message.success('加载专属作品...');
     const isExcel = tpl.category === 'excel' || (tpl.id && String(tpl.id).includes('EXCEL'));
@@ -54,13 +54,14 @@ const MallPortal = () => {
     }, 600);
   };
 
+  // 🌟 核心修复2：编辑作品也必须用 coolmall_pending_tpl 传递数据
   const handleEditWork = (work: any) => {
     fetch(`http://localhost:3000/api/h5/work/${work.id}`).then(r => r.json()).then(res => {
       if (res.code === 200) {
         let schemaStr = res.data.schema_json || '[]';
         if (typeof schemaStr !== 'string') schemaStr = JSON.stringify(schemaStr);
 
-        localStorage.setItem('pointData', schemaStr);
+        localStorage.setItem('coolmall_pending_tpl', schemaStr);
         localStorage.setItem('coolmall_current_title', res.data.title || '');
         message.success('载入中...');
         const isExcel = res.data.category === 'excel' || (work.id && String(work.id).includes('EXCEL'));
@@ -126,7 +127,7 @@ const MallPortal = () => {
           <Button onClick={() => history.push('/excel')} style={{ color: '#107c41', borderColor: '#107c41' }}>新建表格</Button>
 
           <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => {
-            // 🌟 修复：多加一个缓存清理，彻底斩断旧数据复用
+            localStorage.setItem('coolmall_force_blank', '1');
             localStorage.removeItem('pointData');
             localStorage.removeItem('coolmall_current_title');
             localStorage.removeItem('coolmall_pending_tpl');
@@ -269,9 +270,7 @@ const MallPortal = () => {
   );
 };
 
-// =================================================================
-// 🌟 2. 满血 B 端管理后台
-// =================================================================
+// 后面的管理员组件代码没动...
 const AdminUsers = () => {
   const [data, setData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -290,9 +289,7 @@ const AdminUsers = () => {
       message.warning('请填写完整的邮箱和密码！');
       return;
     }
-
     message.loading({ content: '正在创建账号...', key: 'create-user' });
-
     fetch('http://localhost:3000/api/admin/users/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
@@ -380,9 +377,7 @@ const AdminUsers = () => {
           新增账号
         </Button>
       </div>
-
       <Table scroll={{ y: 500 }} rowSelection={rowSelection} columns={cols} dataSource={data} rowKey="id" pagination={{ pageSize: 8 }} />
-
       <Modal title="管理员手动新增账号" visible={isModalVisible} onOk={handleCreateUser} onCancel={() => setIsModalVisible(false)} okText="确认创建" cancelText="取消">
         <Space direction="vertical" style={{ width: '100%', marginTop: 10 }} size="large">
           <Input placeholder="输入用户邮箱 (例如: user@qq.com)" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} />

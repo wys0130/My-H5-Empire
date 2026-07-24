@@ -127,14 +127,14 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
   // 🌟 核心修复：彻底清理旧模板的一切根源缓存
   const executeNewPage = () => {
-    clearData();
+    clearData(); // 触发底层的清空，绝对不要加 window.location.href 强刷！
     setSaveTplName('');
     localStorage.removeItem('coolmall_current_title');
     localStorage.removeItem('pointData');
-    localStorage.removeItem('coolmall_pending_tpl'); // 必须清空这个！底层引擎就是认的它
+    localStorage.removeItem('coolmall_pending_tpl');
 
-    // 强制跳转清理 URL 参数，重载内存
-    window.location.href = '/editor';
+    // 只清理网址上的 ?tid=xxx，不刷新浏览器
+    history.replace('/editor');
   };
 
   const newPage = () => {

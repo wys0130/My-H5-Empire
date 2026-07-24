@@ -61,7 +61,30 @@ const Container = (props: {
   const pointData = pstate ? pstate.pointData : [];
   const cpointData = cstate ? cstate.pointData : [];
 
-  // 🌟 1. 核心中文匹配逻辑
+  // 🌟 【终极杀招：强制数据同步拦截】
+  useEffect(() => {
+    // 1. 如果有强制清空标记（从商城大厅点"新建页面"），立刻清空画布
+    if (localStorage.getItem('FORCE_CLEAR_CANVAS') === '1') {
+      dispatch({ type: 'editorModal/clearAll' });
+      localStorage.removeItem('FORCE_CLEAR_CANVAS');
+    }
+    // 2. 如果是从大盘点进来的，强制让 Redux 读取正确的待定数据，击碎持久化缓存的“顶包”错觉！
+    else {
+      const pendingTpl = localStorage.getItem('coolmall_pending_tpl');
+      if (pendingTpl) {
+        try {
+          const parsedData = JSON.parse(pendingTpl);
+          if (Array.isArray(parsedData)) {
+            dispatch({ type: 'editorModal/importTplData', payload: parsedData });
+          }
+        } catch (error) {
+          console.error("解析作品数据失败", error);
+        }
+      }
+    }
+  }, [dispatch]);
+
+  // 1. 核心中文匹配逻辑
   const isCompDisabled = useCallback((displayName: string) => {
     if (!displayName) return false;
     return disabledComps.some(name => {
@@ -70,18 +93,16 @@ const Container = (props: {
     });
   }, [disabledComps]);
 
-  // 🌟 2. 翻译出底层英文 Type 身份证
+  // 2. 翻译出底层英文 Type 身份证
   const disabledTypes = useMemo(() => {
     const allTpls = [...template, ...mediaTpl, ...graphTpl, ...shopTpl];
     return allTpls.filter(v => isCompDisabled(v.displayName)).map(v => v.type);
   }, [isCompDisabled, template, mediaTpl, graphTpl, shopTpl]);
 
-  // 🌟 3. 【绝对杀招：直接血洗 Redux 全局数据库！】
+  // 3. 【屏蔽禁用组件逻辑】
   useEffect(() => {
     if (disabledTypes.length > 0 && pstate && pstate.pointData) {
-      // 过滤出干净的数据
       const cleanData = pstate.pointData.filter((pt: any) => !disabledTypes.includes(pt.item?.type));
-      // 如果发现残留的脏数据，直接暴力覆盖整个 Redux 状态！
       if (cleanData.length !== pstate.pointData.length) {
         dispatch({
           type: 'editorModal/importTplData',
