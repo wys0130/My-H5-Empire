@@ -41,7 +41,7 @@ const MallPortal = () => {
 
   const handleUseTemplate = (tpl: any) => {
     localStorage.setItem('coolmall_pending_tpl', tpl.json_data || '[]');
-    message.success('模板就绪...');
+    message.success('加载中...');
     const isExcel = tpl.category === 'excel' || (tpl.id && String(tpl.id).includes('EXCEL'));
     setTimeout(() => history.push(isExcel ? '/excel' : '/editor'), 600);
   };
@@ -84,12 +84,7 @@ const MallPortal = () => {
           headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
           body: JSON.stringify({ id: work.id })
         }).then(r => r.json()).then(res => {
-          if (res.code === 200) {
-            message.success('作品已成功删除');
-            loadData();
-          } else {
-            message.error(res.msg || '删除失败');
-          }
+          if (res.code === 200) { message.success('作品已成功删除'); loadData(); } else { message.error(res.msg || '删除失败'); }
         });
       }
     });
@@ -102,7 +97,7 @@ const MallPortal = () => {
           <img src="/logo.png" alt="Logo" style={{ height: '32px', marginRight: '24px' }} onError={(e) => e.currentTarget.style.display = 'none'} />
           <Menu mode="horizontal" selectedKeys={[activeMenu]} onClick={(e) => setActiveMenu(e.key)} style={{ borderBottom: 'none', lineHeight: '64px', flex: 1, border: 'none' }}>
             <Menu.Item key="mall" style={{ fontWeight: 'bold' }}>商城主页</Menu.Item>
-            {/* 🌟 严格按照图片1要求：删掉组件模板 */}
+            {/* 🌟 严格按你的要求，彻底消除了 组件模板 的顶部导航 */}
             <Menu.Item key="my" style={{ fontWeight: 'bold' }}>我的作品</Menu.Item>
           </Menu>
         </div>
@@ -155,12 +150,12 @@ const MallPortal = () => {
 
             <div style={{ marginBottom: '48px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 'bold', borderLeft: '4px solid #e11d48', paddingLeft: '12px', marginBottom: '24px', color: '#333' }}>🔥 最新落地页</h2>
-              {h5Templates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>暂无页面模板</div>) : (
+              {h5Templates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>大盘暂无作品</div>) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px' }}>
                   {h5Templates.map((tpl: any) => (
                     <div key={tpl.id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.3s', position: 'relative' }} onClick={() => handleUseTemplate(tpl)}>
                       <div style={{ position: 'relative', height: '340px', background: '#f3f4f6', overflow: 'hidden' }}>
-                        <iframe src={`/preview?tid=${tpl.id}`} style={{ width: '375px', height: '667px', border: 'none', transform: 'scale(0.66)', transformOrigin: 'top left', pointerEvents: 'none', position: 'absolute', top: 0, left: 0 }} />
+                        <img src={tpl.cover_url} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt={tpl.title} onError={(e: any) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/375x667/f3f4f6/999999?text=Cover'; }} />
                       </div>
                       <div style={{ padding: '16px' }}>
                         <h4 style={{ margin: '0 0 8px', fontWeight: 'bold', fontSize: '15px', color: '#333' }}>{tpl.title}</h4>
@@ -173,7 +168,7 @@ const MallPortal = () => {
 
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 'bold', borderLeft: '4px solid #107c41', paddingLeft: '12px', marginBottom: '24px', color: '#333' }}>📊 热门云表格大盘</h2>
-              {excelTemplates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>暂无表格模板</div>) : (
+              {excelTemplates.length === 0 ? (<div style={{ textAlign: 'center', padding: '40px 0', color: '#999', background: '#fff', borderRadius: '12px' }}>大盘暂无表格</div>) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px' }}>
                   {excelTemplates.map((tpl: any) => (
                     <div key={tpl.id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.3s', position: 'relative' }} onClick={() => handleUseTemplate(tpl)}>
@@ -211,9 +206,9 @@ const MallPortal = () => {
                       </div>
                       <div onClick={() => handleEditWork(work)}>
                         <div style={{ height: '340px', background: '#f3f4f6', overflow: 'hidden', position: 'relative' }}>
-                          {isExcel ? <img src={work.cover_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <iframe src={`/preview?tid=${work.id}`} style={{ width: '375px', height: '667px', border: 'none', transform: 'scale(0.66)', transformOrigin: 'top left', pointerEvents: 'none', position: 'absolute', top: 0, left: 0 }} />}
+                          <img src={work.cover_url} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt={work.title} onError={(e: any) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/375x667/f3f4f6/999999?text=Cover'; }} />
                         </div>
-                        <div style={{ padding: '16px' }}><h4 style={{ margin: '0 0 4px', fontWeight: 'bold' }}>{work.title}</h4><div style={{ fontSize: '12px', color: '#999' }}>状态: {work.is_published === 1 ? <span style={{ color: '#10b981' }}>已上架</span> : <span style={{ color: '#f59e0b' }}>未上架(草稿)</span>}</div></div>
+                        <div style={{ padding: '16px' }}><h4 style={{ margin: '0 0 4px', fontWeight: 'bold' }}>{work.title}</h4><div style={{ fontSize: '12px', color: '#999' }}>状态: {work.is_published === 1 ? <span style={{ color: '#10b981' }}>已展示在大盘</span> : <span style={{ color: '#f59e0b' }}>未上架(草稿)</span>}</div></div>
                       </div>
                     </div>
                   );
@@ -405,13 +400,10 @@ const AdminHomepage = () => {
   );
 };
 
-// 🌟 严格按照图片5要求：增加批量操作
 const AdminAudit = () => {
   const [data, setData] = useState([]);
   const [logs, setLogs] = useState([]);
   const [viewBackup, setViewBackup] = useState<string | null>(null);
-  const [selectedWorkKeys, setSelectedWorkKeys] = useState<React.Key[]>([]);
-  const [selectedLogKeys, setSelectedLogKeys] = useState<React.Key[]>([]);
 
   const load = () => {
     fetch('http://localhost:3000/api/admin/all-works', { headers: { 'x-role': 'admin', 'x-user-id': '1' } }).then(r => r.json()).then(res => setData(res.data || []));
@@ -422,33 +414,6 @@ const AdminAudit = () => {
   const toggle = (id: string, status: boolean) => {
     fetch('http://localhost:3000/api/h5/work/toggle-publish', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id, is_published: status ? 1 : 0 }) }).then(() => { message.success('已刷新'); load(); });
   };
-
-  const handleBatchForceDelete = () => {
-    if (selectedWorkKeys.length === 0) return message.warning('请先勾选作品！');
-    Modal.confirm({
-      title: `确认批量强制销毁选中的 ${selectedWorkKeys.length} 个作品吗？`,
-      onOk: () => {
-        Promise.all(
-          selectedWorkKeys.map(id => fetch('http://localhost:3000/api/admin/force-delete-work', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id }) }).then(r => r.json()))
-        ).then(() => { message.success('批量销毁成功'); setSelectedWorkKeys([]); load(); });
-      }
-    });
-  };
-
-  const handleBatchDeleteLogs = () => {
-    if (selectedLogKeys.length === 0) return message.warning('请先勾选日志！');
-    Modal.confirm({
-      title: `确认批量删除选中的 ${selectedLogKeys.length} 条日志吗？`,
-      onOk: () => {
-        Promise.all(
-          selectedLogKeys.map(id => fetch('http://localhost:3000/api/admin/operation-logs/delete', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id }) }).then(r => r.json()))
-        ).then(() => { message.success('日志批量删除成功'); setSelectedLogKeys([]); load(); });
-      }
-    });
-  };
-
-  const workRowSelection = { selectedRowKeys: selectedWorkKeys, onChange: (keys: React.Key[]) => setSelectedWorkKeys(keys) };
-  const logRowSelection = { selectedRowKeys: selectedLogKeys, onChange: (keys: React.Key[]) => setSelectedLogKeys(keys) };
 
   const cols = [
     { title: '快照', dataIndex: 'cover_url', render: (url: string) => <img src={url} style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 4 }} /> },
@@ -471,8 +436,15 @@ const AdminAudit = () => {
               title: '确认删除这条日志吗？',
               onOk: () => {
                 fetch('http://localhost:3000/api/admin/operation-logs/delete', {
-                  method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id: r.id })
-                }).then(r => r.json()).then(res => { if (res.code === 200) { message.success('日志已删除'); load(); } });
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
+                  body: JSON.stringify({ id: r.id })
+                }).then(r => r.json()).then(res => {
+                  if (res.code === 200) {
+                    message.success('日志已删除');
+                    load();
+                  }
+                });
               }
             });
           }}>删除</Button>
@@ -485,28 +457,8 @@ const AdminAudit = () => {
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
       <h3 style={{ marginBottom: 20, fontWeight: 'bold' }}>作品风控审查</h3>
       <Tabs defaultActiveKey="1">
-        <Tabs.TabPane tab="作品大盘" key="1">
-          <div style={{ marginBottom: 16 }}>
-            {selectedWorkKeys.length > 0 && (
-              <Space>
-                <span style={{ fontSize: '13px', color: '#666' }}>已选 {selectedWorkKeys.length} 项</span>
-                <Button size="small" danger onClick={handleBatchForceDelete}>批量强制销毁</Button>
-              </Space>
-            )}
-          </div>
-          <Table scroll={{ y: 500 }} rowSelection={workRowSelection} columns={cols} dataSource={data} rowKey="id" pagination={false} />
-        </Tabs.TabPane>
-        <Tabs.TabPane tab="销毁日志" key="2">
-          <div style={{ marginBottom: 16 }}>
-            {selectedLogKeys.length > 0 && (
-              <Space>
-                <span style={{ fontSize: '13px', color: '#666' }}>已选 {selectedLogKeys.length} 项</span>
-                <Button size="small" danger onClick={handleBatchDeleteLogs}>批量删除日志</Button>
-              </Space>
-            )}
-          </div>
-          <Table scroll={{ y: 500 }} rowSelection={logRowSelection} columns={logCols} dataSource={logs} rowKey="id" pagination={false} />
-        </Tabs.TabPane>
+        <Tabs.TabPane tab="作品大盘" key="1"><Table scroll={{ y: 500 }} columns={cols} dataSource={data} rowKey="id" pagination={false} /></Tabs.TabPane>
+        <Tabs.TabPane tab="销毁日志" key="2"><Table scroll={{ y: 500 }} columns={logCols} dataSource={logs} rowKey="id" pagination={false} /></Tabs.TabPane>
       </Tabs>
 
       <Modal title="销毁数据快照 (JSON 备份)" visible={!!viewBackup} onCancel={() => setViewBackup(null)} footer={null} width={800}>
@@ -520,12 +472,10 @@ const AdminAudit = () => {
   );
 };
 
-// 🌟 严格按照图片4要求：增加批量操作
 const AdminComponents = () => {
   const [data, setData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newComp, setNewComp] = useState({ name: '', icon: '📦', category: '基础组件' });
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const load = () => fetch('http://localhost:3000/api/components/list').then(r => r.json()).then(res => setData(res.data || []));
   useEffect(() => { load(); }, []);
@@ -539,24 +489,6 @@ const AdminComponents = () => {
       });
   };
 
-  const handleBatchToggle = (status: number) => {
-    if (selectedRowKeys.length === 0) return message.warning('请先勾选目标组件！');
-
-    Promise.all(
-      selectedRowKeys.map(id =>
-        fetch('http://localhost:3000/api/admin/components/toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
-          body: JSON.stringify({ id, status })
-        }).then(r => r.json())
-      )
-    ).then(() => {
-      message.success(`成功批量${status === 1 ? '开启' : '关闭'}所选组件`);
-      setSelectedRowKeys([]);
-      load();
-    });
-  };
-
   const handleAdd = () => {
     if (!newComp.name) return message.warning('请输入名称');
     fetch('http://localhost:3000/api/admin/components/add', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify(newComp) })
@@ -564,11 +496,6 @@ const AdminComponents = () => {
         if (res.code === 200) { message.success(res.msg); setIsModalVisible(false); load(); }
         else { message.error(res.msg); }
       });
-  };
-
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
   };
 
   const cols = [
@@ -580,21 +507,11 @@ const AdminComponents = () => {
 
   return (
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontWeight: 'bold' }}>组件管控大盘</h3>
-          {selectedRowKeys.length > 0 && (
-            <Space>
-              <span style={{ fontSize: '13px', color: '#666' }}>已选 {selectedRowKeys.length} 项</span>
-              <Button size="small" type="primary" onClick={() => handleBatchToggle(1)}>批量开启</Button>
-              <Button size="small" style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }} onClick={() => handleBatchToggle(0)}>批量关闭</Button>
-            </Space>
-          )}
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h3 style={{ margin: 0, fontWeight: 'bold' }}>组件管控大盘</h3>
         <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => setIsModalVisible(true)}>下发新组件</Button>
       </div>
-
-      <Table scroll={{ y: 500 }} rowSelection={rowSelection} columns={cols} dataSource={data} rowKey="id" pagination={false} />
+      <Table scroll={{ y: 500 }} columns={cols} dataSource={data} rowKey="id" pagination={false} />
 
       <Modal title="下发新组件" visible={isModalVisible} onOk={handleAdd} onCancel={() => setIsModalVisible(false)}>
         <Space direction="vertical" style={{ width: '100%', marginTop: 10 }}>
@@ -663,7 +580,7 @@ export default function BasicLayout(props: any) {
   const menuItems = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: '大盘概览' },
     { key: '/admin/homepage', icon: <SettingOutlined />, label: '主页配置' },
-    // 🌟 严格按照图片2要求：删掉模板管理
+    // 🌟 已删除模板管理
     { key: '/admin/audit', icon: <SafetyCertificateOutlined />, label: '作品审核' },
     { key: '/admin/components', icon: <BuildOutlined />, label: '组件管理' },
     { key: '/users', icon: <TeamOutlined />, label: '用户管理' },

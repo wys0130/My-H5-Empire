@@ -69,8 +69,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     if (!isSilent) message.loading({ content: '抓取封面中...', key: 'poster', duration: 0 });
 
     try {
-      const tid = props.location.query?.tid || '';
-      const previewUrl = `${window.location.protocol}//${window.location.host}/preview?tid=${tid}&gf=1`;
+      // ⚠️ 绝杀修复：绝对不能传带有旧ID的 tid 给后端！彻底斩断与旧数据的联系！
+      const previewUrl = `${window.location.protocol}//${window.location.host}/preview?gf=1&_t=${Date.now()}`;
 
       const res = await fetch('http://localhost:3000/api/render/screenshot', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -180,7 +180,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       <div className={`hide-scroll ${styles.controlArea}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflowX: 'auto', whiteSpace: 'nowrap' }}>
         <Button type="default" onClick={() => history.push('/mall')} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>🏠 返回</Button>
-        {/* 🌟 严格按照图片3要求：已删除“组件库”和“保存组件”按钮 */}
 
         <MyPopover content={content()} directions="BOTTOM">
           <Button type="default" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
@@ -197,7 +196,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
           我的作品
         </Button>
         <Button type="primary" icon={<SendOutlined />} onClick={openPublishModal}>
-          保存草稿
+          发布到我的作品
         </Button>
 
         {user && !isAdmin ? (
@@ -220,7 +219,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         visible={modalConfig.visible}
         onOk={handlePublishH5}
         onCancel={() => setModalConfig({ ...modalConfig, visible: false })}
-        okText="保存"
+        okText="发布到我的作品"
         cancelText="取消"
         destroyOnClose={true}
         width={380}
@@ -234,7 +233,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
             <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>封面预览：</div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
               <Spin spinning={isCapturing} tip="生成中...">
-                {faceUrl ? (<img src={faceUrl} style={{ width: '160px', height: '284px', objectFit: 'cover', border: '1px solid #eee', borderRadius: '8px' }} />) : (<div style={{ width: '160px', height: '284px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>封面生成中...</div>)}
+                {faceUrl ? (<img src={faceUrl} style={{ width: '160px', height: '284px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '8px' }} />) : (<div style={{ width: '160px', height: '284px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>封面生成中...</div>)}
               </Spin>
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
