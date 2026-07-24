@@ -127,10 +127,12 @@ const MallPortal = () => {
           <Button onClick={() => history.push('/excel')} style={{ color: '#107c41', borderColor: '#107c41' }}>新建表格</Button>
 
           <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => {
-            localStorage.setItem('coolmall_force_blank', '1');
+            localStorage.setItem('FORCE_CLEAR_CANVAS', '1');   // 与编辑器模型一致
             localStorage.removeItem('pointData');
             localStorage.removeItem('coolmall_current_title');
             localStorage.removeItem('coolmall_pending_tpl');
+            // 同时清除所有可能的草稿键（可选）
+            localStorage.removeItem('coolmall_draft_h5_blank_page');
             window.location.href = '/editor';
           }}>新建页面</Button>
 

@@ -102,7 +102,14 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
   const handlePublishH5 = async () => {
     if (!saveTplName) return message.warning('请填写作品名称！');
-    if (!faceUrl) return message.warning('封面生成中，请稍后...');
+    if (!faceUrl) {
+      message.warning('封面尚未生成，请稍后...');
+      return;
+    }
+    if (!pointData || pointData.length === 0) {
+      message.warning('画布为空，请添加组件');
+      return;
+    }
 
     message.loading({ content: '保存草稿中...', key: 'publish', duration: 0 });
     const workId = props.location.query?.tid || ('H5_' + Date.now());

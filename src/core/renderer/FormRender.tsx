@@ -10,6 +10,7 @@ import Pos from '../../components/FormComponents/Pos';
 import { Store } from 'antd/lib/form/interface';
 import RichText from '../../components/FormComponents/XEditor';
 import FormItems from '../../components/FormComponents/FormItems';
+
 const normFile = (e: any) => {
   console.log('Upload event:', e);
   if (Array.isArray(e)) {
@@ -63,12 +64,13 @@ const FormEditor = (props: FormEditorProps) => {
       initialValues={defaultValue}
       onValuesChange={handlechange}
     >
+      {/* 🌟 只改了这一行：加入了 (config || []) 防御红屏报错 */}
       {(config || []).map((item, i) => {
         return (
           <React.Fragment key={i}>
             {item.type === 'Number' && (
               <Form.Item label={item.name} name={item.key}>
-                <InputNumber max={item.range && item.range[1]} />
+                <InputNumber max={item.range?.[1]} />
               </Form.Item>
             )}
             {item.type === 'Text' && (

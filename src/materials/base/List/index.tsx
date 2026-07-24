@@ -31,7 +31,7 @@ const List = memo((props: IListConfig) => {
                 <div className={styles.sourceItem} key={i}>
                   <div className={styles.imgWrap}>
                     <img
-                      src={item.imgUrl[0] ? item.imgUrl[0].url : ''}
+                      src={item.imgUrl?.[0]?.url || ''}
                       alt={item.desc}
                       style={{
                         width: parseFloat(imgSize),
