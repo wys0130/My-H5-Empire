@@ -1,82 +1,49 @@
-import {
-  IColorConfigType,
-  INumberConfigType,
-  ITextConfigType,
-  IUploadConfigType,
-  TColorDefaultType,
-  TNumberDefaultType,
-  TTextDefaultType,
-  TUploadDefaultType,
-} from '@/components/FormComponents/types';
 import { baseConfig, baseDefault, ICommonBaseType } from '../../common';
 
-export type THeaderEditData = Array<
-  IColorConfigType | INumberConfigType | IUploadConfigType | ITextConfigType
->;
 export interface IHeaderConfig extends ICommonBaseType {
-  bgColor: TColorDefaultType;
-  logo: TUploadDefaultType;
-  logoText: TTextDefaultType;
-  fontSize: TNumberDefaultType;
-  color: TColorDefaultType;
-  height: TNumberDefaultType;
+  bgColor: any;
+  logo: any;
+  logoText: string;
+  fontSize: number;
+  color: any;
+  height: number;
+  textAlign?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  bgUrl?: any;
+  bgUrlText?: string;
 }
 
 export interface IHeaderSchema {
-  editData: THeaderEditData;
+  editData: any[];
   config: IHeaderConfig;
 }
 
 const Header: IHeaderSchema = {
   editData: [
     ...baseConfig,
-    {
-      key: 'bgColor',
-      name: '背景色',
-      type: 'Color',
-    },
-    {
-      key: 'height',
-      name: '高度',
-      type: 'Number',
-    },
-    {
-      key: 'logo',
-      name: 'logo',
-      type: 'Upload',
-      isCrop: true,
-      cropRate: 1000 / 618,
-    },
-    {
-      key: 'logoText',
-      name: 'logo文字',
-      type: 'Text',
-    },
-    {
-      key: 'color',
-      name: '文字颜色',
-      type: 'Color',
-    },
-    {
-      key: 'fontSize',
-      name: '文字大小',
-      type: 'Number',
-    },
+    { key: 'logoText', name: '标题文字', type: 'Text' },
+    { key: 'fontSize', name: '字号', type: 'Number' },
+    { key: 'color', name: '文字颜色', type: 'Color' },
+    { key: 'bgColor', name: '背景颜色', type: 'Color' },
+    { key: 'textAlign', name: '对齐方式', type: 'Radio', range: [{ key: 'left', text: '左' }, { key: 'center', text: '中' }, { key: 'right', text: '右' }] },
+    { key: 'fontWeight', name: '文字粗细', type: 'Radio', range: [{ key: 'normal', text: '常规' }, { key: 'bold', text: '加粗' }] },
+    { key: 'fontStyle', name: '文字斜体', type: 'Radio', range: [{ key: 'normal', text: '常规' }, { key: 'italic', text: '斜体' }] },
+    { key: 'bgUrl', name: '背景图片', type: 'Upload', isCrop: false },
+    { key: 'bgUrlText', name: '网络背景图', type: 'Text' }
   ],
   config: {
-    bgColor: 'rgba(0,0,0,1)',
-    logo: [
-      {
-        uid: '001',
-        name: 'image.png',
-        status: 'done',
-        url: 'http://49.234.61.19/uploads/3_1740be8a482.png',
-      },
-    ],
+    bgColor: '#ffffff',
+    logo: [],
     logoText: '页头Header',
-    fontSize: 20,
-    color: 'rgba(255,255,255,1)',
+    fontSize: 18,
+    color: '#333333',
     height: 50,
+    textAlign: 'center',
+    fontWeight: 'normal',
+    fontStyle: 'normal',
+    bgUrl: [],
+    bgUrlText: '',
     ...baseDefault,
   },
 };
