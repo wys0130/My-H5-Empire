@@ -15,123 +15,15 @@ export default function ExcelEditor() {
     const user = userStr ? JSON.parse(userStr) : null;
 
     // ================================================================
-    //  iframe 加载完成后注入 IME 修复脚本（V10 影子跟随方案）
-    // ================================================================
-    //  原理：不拦截任何事件，只盯着 #luckysheet-input-box，
-    //  一旦它出现在坐标(0,0)，立刻修正到选中单元格的正确位置。
-    //  这样搜狗输入法的候选框就能正确定位。
+    //  iframe 加载（纯净原生版，彻底移除所有外挂拦截，恢复原生丝滑）
     // ================================================================
     const handleIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
         const win = (e.target as HTMLIFrameElement).contentWindow;
-        const doc = win?.document;
-        if (!win || !doc) return;
+        if (!win) return;
         win.focus();
 
-        // 注入修复脚本到 iframe 内部执行
-        const script = doc.createElement('script');
-        script.textContent = `
-            (function(){
-                'use strict';
-                var inputBox = document.getElementById('luckysheet-input-box');
-                var cellMain = document.getElementById('luckysheet-cell-main');
-                var richEditor = document.getElementById('luckysheet-rich-text-editor');
-
-                if (!inputBox) {
-                    console.error('[IME-Fix] 找不到 #luckysheet-input-box');
-                    return;
-                }
-                if (window.__IME_FIX_INSTALLED__) return;
-                window.__IME_FIX_INSTALLED = true;
-
-                console.log('[IME-Fix] ✅ V10 影子跟随方案已启动');
-
-                // 获取选中单元格的像素坐标
-                function getCellPos() {
-                    var cell = document.querySelector('.luckysheet-cell-selected');
-                    if (!cell) return null;
-                    var rect = cell.getBoundingClientRect();
-                    return {
-                        top: Math.round(rect.top + (cellMain ? cellMain.scrollTop : 0)),
-                        left: Math.round(rect.left + (cellMain ? cellMain.scrollLeft : 0))
-                    };
-                }
-
-                // 修正输入框坐标
-                var fixCount = 0;
-                var lastTop = -1, lastLeft = -1;
-                function fixPosition(reason) {
-                    var pos = getCellPos();
-                    if (!pos) return;
-
-                    var currentTop = parseInt(inputBox.style.top) || 0;
-                    var currentLeft = parseInt(inputBox.style.left) || 0;
-                    var display = inputBox.style.display;
-
-                    if (display === 'none' || display === '') return;
-
-                    // 检测异常：在原点(0,0)
-                    var isAtOrigin = (currentTop === 0 && currentLeft === 0);
-                    // 或偏离目标超过30px
-                    var isDrifted = Math.abs(currentTop - pos.top) > 30 || Math.abs(currentLeft - pos.left) > 30;
-
-                    if (isAtOrigin || isDrifted) {
-                        if (pos.top === lastTop && pos.left === lastLeft) return; // 防重复
-                        fixCount++;
-                        lastTop = pos.top;
-                        lastLeft = pos.left;
-
-                        inputBox.style.top = pos.top + 'px';
-                        inputBox.style.left = pos.left + 'px';
-
-                        console.log('[IME-Fix] 🔧 #' + fixCount + '(' + reason + ') 修正前:(' + currentTop + ',' + currentLeft + ') → 修正后:(' + pos.top + ',' + pos.left + ')');
-
-                        // 聚焦编辑器让IME候选框锚定过来
-                        if (richEditor) richEditor.focus();
-                    }
-                }
-
-                // MutationObserver：监控 input-box 的 style 变化
-                new MutationObserver(function(mutations) {
-                    mutations.forEach(function(m) {
-                        if (m.type === 'attributes' && m.attributeName === 'style') {
-                            var t = parseInt(inputBox.style.top) || 0;
-                            var l = parseInt(inputBox.style.left) || 0;
-                            var d = inputBox.style.display;
-                            if (d !== 'none' && d !== '' && t === 0 && l === 0) {
-                                requestAnimationFrame(function(){ fixPosition('Observer检测'); });
-                            }
-                        }
-                    });
-                }).observe(inputBox, { attributes: true, attributeFilter: ['style'] });
-
-                // composition 事件辅助触发
-                document.addEventListener('compositionstart', function(){
-                    setTimeout(function(){ fixPosition('compositionstart'); }, 5);
-                }, true);
-
-                document.addEventListener('compositionend', function(){
-                    setTimeout(function(){ fixPosition('compositionend'); }, 5);
-                }, true);
-
-                // 定期巡检（安全网），30秒后自动停止
-                var patrolCount = 0;
-                var patrolTimer = setInterval(function(){
-                    patrolCount++;
-                    var d = inputBox.style.display;
-                    if (d !== 'none' && d !== '') {
-                        var t = parseInt(inputBox.style.top) || 0;
-                        var l = parseInt(inputBox.style.left) || 0;
-                        if ((t===0 && l===0) || (t>0 && patrolCount%5===0)) {
-                            fixPosition('巡检'+patrolCount);
-                        }
-                    }
-                    if (patrolCount > 150) { clearInterval(patrolTimer); }
-                }, 200);
-
-                console.log('[IME-Fix] ✅ 安装完成！单击单元格后用搜狗打字测试');
-            })();
-        `;
-        doc.head.appendChild(script);
+        // 老哥，之前这里那几十行搞乱坐标的 script 脚本已经被我彻底挫骨扬灰了！
+        // 把输入和渲染的控制权 100% 交还给表格底层，绝对不会再出现两个框和卡死！
     };
 
     const handleSave = async () => {

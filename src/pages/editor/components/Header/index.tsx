@@ -122,9 +122,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     if (res.code === 200) {
       message.success({ content: '🚀 已存入您的私有草稿箱！', key: 'publish', duration: 3 });
       setModalConfig({ visible: false });
-      if (!props.location.query?.tid) {
-        window.location.href = `/editor?tid=${workId}`;
-      }
+      history.push('/mall?tab=my');
     } else message.error({ content: res.msg, key: 'publish', duration: 3 });
   };
 
