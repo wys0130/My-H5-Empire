@@ -1,9 +1,9 @@
 import { baseConfig, baseDefault } from '../../common';
 
-const Header = {
+const Text = {
   editData: [
     ...baseConfig,
-    { key: 'logoText', name: '标题文字', type: 'Text' },
+    { key: 'text', name: '文字内容', type: 'Text' }, // 👈 只保留这一个纯粹的文字内容输入框
     { key: 'fontSize', name: '字号', type: 'Number' },
     { key: 'color', name: '文字颜色', type: 'Color' },
     { key: 'bgColor', name: '背景颜色', type: 'Color' },
@@ -13,13 +13,11 @@ const Header = {
     { key: 'bgUrl', name: '背景图片', type: 'Upload', isCrop: false },
   ],
   config: {
-    // 🎯 必须使用框架标准的 rgba 格式，取色器才能正常渲染预览块
-    bgColor: 'rgba(255,255,255,1)',
+    bgColor: 'rgba(255,255,255,0)',
     color: 'rgba(51,51,51,1)',
-    logoText: '页头Header',
+    text: '普通文本组件', // 默认文字
     fontSize: 18,
     height: 50,
-    logo: [],
     textAlign: 'center',
     fontWeight: 'normal',
     fontStyle: 'normal',
@@ -28,4 +26,4 @@ const Header = {
   },
 };
 
-export default Header;
+export default Text;

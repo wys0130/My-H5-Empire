@@ -187,10 +187,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       <Menu.Item key="2" icon={<CopyOutlined />} onClick={downLoadJson} disabled={!pointData.length}>下载 JSON</Menu.Item>
       <Menu.Item key="3" icon={<FileAddOutlined />} onClick={newPage}>新建页面</Menu.Item>
       <Menu.Divider />
-      <Menu.Item key="4" icon={<UndoOutlined />} onClick={undohandler} disabled={!pointData.length}>撤销</Menu.Item>
-      <Menu.Item key="5" icon={<RedoOutlined />} onClick={redohandler} disabled={!pointData.length}>重做</Menu.Item>
-      <Menu.Item key="6" icon={<DeleteOutlined />} onClick={deleteAll} disabled={!pointData.length} danger>清空</Menu.Item>
-      <Menu.Divider />
       <Menu.Item key="7" icon={<InstagramOutlined />} onClick={() => { setShowFaceModal(true); if (!faceUrl) autoGenerateCover(true); }} disabled={!pointData.length}>生成海报</Menu.Item>
     </Menu>
   );
@@ -214,12 +210,22 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         </div>
       </div>
 
-      <div className={styles.controlArea}>
-        <Button type="default" onClick={() => history.push('/mall')}>🏠 返回</Button>
+      <div className={styles.controlArea} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {/* 🌟 1. 把这三个按钮直接提出来，放在左边 */}
+        <Button onClick={undohandler} disabled={!pointData.length} icon={<UndoOutlined />}>撤销</Button>
+        <Button onClick={redohandler} disabled={!pointData.length} icon={<RedoOutlined />}>重做</Button>
+        <Button onClick={deleteAll} disabled={!pointData.length} danger icon={<DeleteOutlined />}>清空</Button>
+
+        {/* 🌟 2. 加一个美观的竖线分割一下 */}
+        <div style={{ width: '1px', height: '20px', background: '#d9d9d9', margin: '0 8px' }}></div>
+
+        {/* 原本的预览和更多按钮保持不变 */}
         <MyPopover content={content()} directions="BOTTOM">
           <Button type="default" disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
         </MyPopover>
         <Button type="default" onClick={toPreview} disabled={!pointData.length}>电脑预览</Button>
+
+        {/* 🌟 3. 别忘了在上面的 moreMenu 变量里，把这三个按钮删掉，免得重复 */}
         <Dropdown overlay={moreMenu} placement="bottomCenter" trigger={['click']}>
           <Button>更多 <DownOutlined style={{ marginLeft: 4 }} /></Button>
         </Dropdown>

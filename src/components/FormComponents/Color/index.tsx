@@ -1,19 +1,36 @@
 import React from 'react';
+import ReactDOM from 'react-dom'; // 🚀 引入 ReactDOM 用于创建突破容器限制的传送门(Portal)
 import { SketchPicker, ColorResult } from 'react-color';
 import { rgba2Obj } from '@/utils/tool';
 
-export type ColorConfigType = string;
+export type ColorConfigType = string | any;
 
-//value 初始值传来，onchange item给的回调
 interface ColorProps {
   value?: ColorConfigType;
   onChange?: (v: ColorConfigType) => void;
 }
 
+// 🛡️ 终极安全拦截器（完整保留，防止崩溃）
+const getSafeColorObj = (val: any) => {
+  if (!val) return { r: 0, g: 0, b: 0, a: 1 };
+  if (typeof val === 'object' && val.r !== undefined) {
+    return { r: val.r, g: val.g, b: val.b, a: val.a !== undefined ? val.a : 1 };
+  }
+  if (typeof val === 'string') {
+    try {
+      const cleanStr = val.replace(/\s/g, '');
+      return rgba2Obj(cleanStr);
+    } catch (e) {
+      return { r: 0, g: 0, b: 0, a: 1 };
+    }
+  }
+  return { r: 0, g: 0, b: 0, a: 1 };
+};
+
 class colorPicker extends React.Component<ColorProps> {
   state = {
     displayColorPicker: false,
-    color: rgba2Obj(this.props.value),
+    color: getSafeColorObj(this.props.value),
   };
 
   handleClick = () => {
@@ -32,10 +49,9 @@ class colorPicker extends React.Component<ColorProps> {
 
   render() {
     return (
-      <div>
+      <div style={{ position: 'relative' }}>
         <div
           style={{
-            // padding: '5px',
             background: '#fff',
             borderRadius: '1px',
             boxShadow: '0 0 0 1px rgba(0,0,0,.1)',
@@ -58,22 +74,30 @@ class colorPicker extends React.Component<ColorProps> {
             <div
               style={{
                 position: 'absolute',
-                zIndex: 2000,
+                zIndex: 9999,
+                right: 0, // 靠右对齐，防止超出屏幕边缘
+                top: '28px',
               }}
             >
               <SketchPicker color={this.state.color} onChange={this.handleChange} />
             </div>
-            <div
-              style={{
-                position: 'fixed',
-                top: '0px',
-                right: '0px',
-                bottom: '0px',
-                left: '0px',
-                zIndex: 1000,
-              }}
-              onClick={this.handleClose}
-            />
+            {/* 🚀 核心修复：使用 Portal 将遮罩强行挂载到 body 上！
+                这样能彻底无视右侧面板的 CSS 约束，实现真正的全屏幕遮罩！
+                点屏幕任意角落绝对立刻关闭！*/}
+            {ReactDOM.createPortal(
+              <div
+                style={{
+                  position: 'fixed',
+                  top: '0px',
+                  right: '0px',
+                  bottom: '0px',
+                  left: '0px',
+                  zIndex: 9998,
+                }}
+                onClick={this.handleClose}
+              />,
+              document.body
+            )}
           </React.Fragment>
         ) : null}
       </div>

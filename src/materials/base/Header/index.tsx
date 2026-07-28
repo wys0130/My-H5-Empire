@@ -8,40 +8,41 @@ const Header = (props: any) => {
     textAlign, fontWeight, bgUrl, isTpl
   } = props;
 
-  // 🛡️ 终极色彩净化器：强制将任何带透明度为0的陷阱转为不透明色
+  // 1. 万能颜色解析：不论框架抛过来什么，都能转化成安全的 CSS 格式
   const parseColor = (c: any, defaultColor: string) => {
     if (!c) return defaultColor;
     if (typeof c === 'string') {
       if (c.includes('NaN')) return defaultColor;
-      if (c.includes(',0)') || c.includes(', 0)')) {
-        return c.replace(/,\s*0\)/, ', 1)');
-      }
+      // 修复透明度为0导致的隐身问题
+      if (c.includes(',0)') || c.includes(', 0)')) return c.replace(/,\s*0\)/, ', 1)');
       return c;
     }
     if (typeof c === 'object') {
       if (c.value) return parseColor(c.value, defaultColor);
-      if (c.hex) return c.hex;
       if ('r' in c && 'g' in c && 'b' in c) {
         const alpha = (c.a === undefined || Number(c.a) === 0) ? 1 : c.a;
         return `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha})`;
       }
+      if (c.hex) return c.hex;
     }
     return defaultColor;
   };
 
-  const finalBgColor = parseColor(bgColor, '#ffffff');
-  const finalTextColor = parseColor(color, '#333333');
+  const finalBgColor = parseColor(bgColor, 'rgba(255,255,255,1)');
+  const finalTextColor = parseColor(color, 'rgba(51,51,51,1)');
 
-  // 背景图解析
+  // 2. 深度背景图解析：完美接住 Ant Design Upload 的嵌套数据
   let backgroundImage = '';
   if (bgUrl) {
     if (typeof bgUrl === 'string') {
       backgroundImage = bgUrl;
     } else if (Array.isArray(bgUrl) && bgUrl.length > 0) {
-      const first = bgUrl[0];
-      if (typeof first === 'string') backgroundImage = first;
-      else if (typeof first === 'object') {
-        backgroundImage = first.url || first.thumbUrl || first.response?.url || first.response?.data?.url || '';
+      const file = bgUrl[0]; // 取第一张图
+      if (typeof file === 'string') {
+        backgroundImage = file;
+      } else if (typeof file === 'object') {
+        // 依次尝试提取真正的图片 URL，涵盖了各种后端的返回格式
+        backgroundImage = file.url || file.thumbUrl || file.response?.url || file.response?.data?.url || '';
       }
     } else if (typeof bgUrl === 'object') {
       backgroundImage = bgUrl.url || bgUrl.thumbUrl || bgUrl.response?.url || '';
@@ -63,7 +64,8 @@ const Header = (props: any) => {
           className={styles.header}
           style={{
             backgroundColor: finalBgColor,
-            backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
+            // 🎯 将解析出来的图片应用到 CSS backgroundImage 属性上
+            backgroundImage: backgroundImage ? `url("${backgroundImage}")` : 'none',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             width: '100%',
