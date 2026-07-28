@@ -71,4 +71,8 @@ export default defineConfig({
     utils: path.resolve(__dirname, 'src/utils/'),
     assets: path.resolve(__dirname, 'src/assets/'),
   },
+  // 🚀 加上这行 Less 兼容配置，彻底解决样式编译报错
+  lessLoader: {
+    javascriptEnabled: true,
+  },
 });

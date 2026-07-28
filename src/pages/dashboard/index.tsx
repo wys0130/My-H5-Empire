@@ -78,16 +78,79 @@ export default function Dashboard() {
         return () => clearInterval(timer);
     }, []);
 
-    // 模拟董事长审批操作
+    // 👑 真实向后端发送审批指令，触发 AI 自主写代码合入主干
     const handleAction = (id: string, action: 'approved' | 'rejected') => {
-        setProposals(prev =>
-            prev.map(p => p.id === id ? { ...p, status: action } : p)
-        );
+        const userStr = localStorage.getItem('coolmall_user');
+        if (!userStr) {
+            message.error('请先登录管理员账号');
+            return;
+        }
+        const user = JSON.parse(userStr);
+
         if (action === 'approved') {
-            message.success('✅ 已授权！AI CEO 正在将代码合入主干并部署...');
+            message.loading({ content: 'AI CEO 正在编写并合入进化代码...', key: 'evolving' });
+
+            fetch('/api/ai/approve-skill', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-role': user.role,
+                    'x-user-id': user.userId.toString()
+                },
+                body: JSON.stringify({ id })
+            })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.code === 200) {
+                        message.success({ content: '✅ 进化成功！AI 已将新功能代码写入源码！', key: 'evolving', duration: 3 });
+                        setProposals(prev =>
+                            prev.map(p => p.id === id ? { ...p, status: 'approved' } : p)
+                        );
+                    } else {
+                        message.error({ content: '❌ 合入失败: ' + res.msg, key: 'evolving' });
+                    }
+                })
+                .catch(() => {
+                    message.error({ content: '❌ 网络异常，AI 进化中断', key: 'evolving' });
+                });
         } else {
+            setProposals(prev =>
+                prev.map(p => p.id === id ? { ...p, status: 'rejected' } : p)
+            );
             message.warning('❌ 已驳回！AI CEO 已将该提案销毁。');
         }
+    };
+
+    // ⏪ 紧急回滚：一键撤销 AI 最近一次的代码进化
+    const handleRollback = () => {
+        const userStr = localStorage.getItem('coolmall_user');
+        if (!userStr) {
+            message.error('请先登录管理员账号');
+            return;
+        }
+        const user = JSON.parse(userStr);
+
+        message.loading({ content: '正在执行紧急回滚，恢复上一个安全版本...', key: 'rolling' });
+
+        fetch('/api/ai/rollback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-role': user.role,
+                'x-user-id': user.userId.toString()
+            }
+        })
+            .then(res => res.json())
+            .then(res => {
+                if (res.code === 200) {
+                    message.success({ content: res.msg, key: 'rolling', duration: 3 });
+                } else {
+                    message.error({ content: '回滚失败: ' + res.msg, key: 'rolling' });
+                }
+            })
+            .catch(() => {
+                message.error({ content: '网络异常，回滚中断', key: 'rolling' });
+            });
     };
 
     const columns = [
@@ -154,7 +217,12 @@ export default function Dashboard() {
                 <Col span={16}>
                     <Card
                         title={<><BulbOutlined style={{ color: '#faad14' }} /> 待批阅的进化技能树</>}
-                        extra={<Badge count={proposals.filter(p => p.status === 'pending').length} />}
+                        extra={
+                            <Space>
+                                <Button danger size="small" onClick={handleRollback}>⏪ 紧急回滚版本</Button>
+                                <Badge count={proposals.filter(p => p.status === 'pending').length} />
+                            </Space>
+                        }
                         bordered={false}
                         style={{ minHeight: '400px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
                     >
