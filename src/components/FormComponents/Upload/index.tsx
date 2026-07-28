@@ -106,49 +106,51 @@ class PicturesWall extends React.Component<PicturesWallType> {
   };
 
   handleChange = async ({ file, fileList }: UploadChangeParam<UploadFile<any>>) => {
-    // 1. 正常同步状态，保证上传进度条能展示
+    // 1. 正常同步状态，保证右侧面板的图片能正常显示或消失
     this.setState({ fileList });
 
-    // 2. 核心大招：无论后端返回成功(done)还是报错(error)，全部强行截获，用 base64 兜底！
+    // 🌟 核心修复：拦截“删除”操作！
+    // 当你点击垃圾桶图标时，状态会变成 removed
+    if (file.status === 'removed') {
+      // 立刻把最新的（空）列表传给画板，让画板的背景图瞬间清空！
+      this.props.onChange && this.props.onChange(fileList);
+      return;
+    }
+
+    // 2. 下面完全保留咱们上一版的强力兜底逻辑，一字不改！
     if (file.status === 'done' || file.status === 'error') {
 
       if (file.status === 'error') {
         message.info('服务端未响应，已自动转为本地图片极速模式');
       }
 
-      // 确保能拿到 base64 (有时 antd 的 thumbUrl 生成较慢，咱们自己用原文件转一次最稳)
       let finalBase64 = file.thumbUrl;
       if (!finalBase64 && file.originFileObj) {
         finalBase64 = await getBase64(file.originFileObj);
       }
 
-      // 组装最终给画板的数据
       const finalFiles = fileList.map(item => {
         let url = item.url;
         if (!url && item.response) {
           url = item.response.url || item.response.data?.url || item.response.result?.url;
         }
-        // 核心：如果有真实 url 用 url，没有就强行塞入 base64
         url = url || item.thumbUrl || (item.uid === file.uid ? finalBase64 : '') || '';
 
         return {
           uid: item.uid,
           name: item.name,
-          status: 'done', // 强行给它塞绿灯通过！让消失的红框变绿！
+          status: 'done',
           url: url,
           thumbUrl: item.thumbUrl || (item.uid === file.uid ? finalBase64 : '')
         };
       });
 
-      // 把强行绿灯的状态覆盖回组件自身，不让它因为 error 被组件干掉
       this.setState({ fileList: finalFiles });
 
-      // 动态入库：将刚刚上传（或生成）的图片，立刻塞进“图片库”的顶部
       const newlyUploadedUrl = finalFiles.find(f => f.uid === file.uid)?.url;
       if (newlyUploadedUrl) {
         this.setState((prevState: any) => {
           const oldPhotos = prevState.imgBed.photo || [];
-          // 去重，防止同一张图在库里出现多次
           if (!oldPhotos.includes(newlyUploadedUrl)) {
             return {
               imgBed: {
@@ -161,7 +163,6 @@ class PicturesWall extends React.Component<PicturesWallType> {
         });
       }
 
-      // 传给外部画板渲染
       this.props.onChange && this.props.onChange(finalFiles);
     }
   };
