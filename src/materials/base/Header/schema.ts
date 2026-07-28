@@ -1,49 +1,44 @@
-import { baseConfig, baseDefault, ICommonBaseType } from '../../common';
+import { baseConfig, baseDefault } from '../../common';
 
-export interface IHeaderConfig extends ICommonBaseType {
-  bgColor: any;
-  logo: any;
-  logoText: string;
-  fontSize: number;
-  color: any;
-  height: number;
-  textAlign?: string;
-  fontWeight?: string;
-  fontStyle?: string;
-  bgUrl?: any;
-  bgUrlText?: string;
-}
-
-export interface IHeaderSchema {
-  editData: any[];
-  config: IHeaderConfig;
-}
-
-const Header: IHeaderSchema = {
+const Header = {
   editData: [
     ...baseConfig,
     { key: 'logoText', name: '标题文字', type: 'Text' },
     { key: 'fontSize', name: '字号', type: 'Number' },
     { key: 'color', name: '文字颜色', type: 'Color' },
     { key: 'bgColor', name: '背景颜色', type: 'Color' },
-    { key: 'textAlign', name: '对齐方式', type: 'Radio', range: [{ key: 'left', text: '左' }, { key: 'center', text: '中' }, { key: 'right', text: '右' }] },
-    { key: 'fontWeight', name: '文字粗细', type: 'Radio', range: [{ key: 'normal', text: '常规' }, { key: 'bold', text: '加粗' }] },
-    { key: 'fontStyle', name: '文字斜体', type: 'Radio', range: [{ key: 'normal', text: '常规' }, { key: 'italic', text: '斜体' }] },
+    {
+      key: 'textAlign',
+      name: '对齐方式',
+      type: 'Select',
+      range: [
+        { key: 'left', text: '居左' },
+        { key: 'center', text: '居中' },
+        { key: 'right', text: '居右' }
+      ]
+    },
+    {
+      key: 'fontWeight',
+      name: '文字粗细',
+      type: 'Select',
+      range: [
+        { key: 'normal', text: '常规' },
+        { key: 'bold', text: '加粗' }
+      ]
+    },
     { key: 'bgUrl', name: '背景图片', type: 'Upload', isCrop: false },
-    { key: 'bgUrlText', name: '网络背景图', type: 'Text' }
   ],
   config: {
+    // 🎯 必须使用标准的 Hex 字符串，右侧属性面板的取色器预览方块才能正常同步显色
     bgColor: '#ffffff',
-    logo: [],
+    color: '#333333',
     logoText: '页头Header',
     fontSize: 18,
-    color: '#333333',
     height: 50,
+    logo: [],
     textAlign: 'center',
     fontWeight: 'normal',
-    fontStyle: 'normal',
     bgUrl: [],
-    bgUrlText: '',
     ...baseDefault,
   },
 };

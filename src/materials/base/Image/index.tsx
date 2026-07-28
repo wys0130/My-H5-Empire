@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { IImageConfig } from './schema';
 import logo from '@/assets/img.png';
-const Image = memo((props: IImageConfig) => {
+
+const Image = memo((props: IImageConfig & { isTpl?: boolean }) => {
   const {
     imgUrl,
     round = 0,
@@ -16,6 +17,17 @@ const Image = memo((props: IImageConfig) => {
     subTitColor,
     subTitFontWeight,
   } = props;
+
+  // 🛡️ 绝对安全的字重解析函数（彻底消灭 NaN 报错，支持 bold / normal / 900 等）
+  const getFontWeight = (w: any) => {
+    if (w === 'bold' || w === 'normal' || w === 'italic') return w;
+    if (w && !isNaN(Number(w))) return Number(w);
+    return 'normal';
+  };
+
+  // 🛡️ 安全获取图片链接，防止空数组崩溃
+  const imageUrl = Array.isArray(imgUrl) && imgUrl.length > 0 ? imgUrl[0]?.url : '';
+
   return (
     <>
       {props.isTpl && (
@@ -32,8 +44,8 @@ const Image = memo((props: IImageConfig) => {
             height: `${props.baseHeight}%`,
             borderRadius: props.baseRadius,
             transform: `translate(${props.baseLeft}px,${props.baseTop}px) 
-      scale(${props.baseScale / 100}) 
-      rotate(${props.baseRotate}deg)`,
+              scale(${props.baseScale / 100}) 
+              rotate(${props.baseRotate}deg)`,
           }}
         >
           <div
@@ -57,21 +69,25 @@ const Image = memo((props: IImageConfig) => {
                 textAlign: align,
               }}
             >
-              <div style={{ fontSize: titFontSize, color: titColor, fontWeight: +titFontWeight }}>
+              <div style={{ fontSize: titFontSize, color: titColor, fontWeight: getFontWeight(titFontWeight) }}>
                 {titText}
               </div>
               <div
                 style={{
                   fontSize: subTitFontSize,
                   color: subTitColor,
-                  fontWeight: +subTitFontWeight,
+                  fontWeight: getFontWeight(subTitFontWeight),
                   lineHeight: 2.6,
                 }}
               >
                 {subTitText}
               </div>
             </div>
-            <img src={imgUrl && imgUrl[0].url} alt="" style={{ width: '100%' }} />
+            {imageUrl ? (
+              <img src={imageUrl} alt="" style={{ width: '100%' }} />
+            ) : (
+              <div style={{ width: '100%', height: '150px', background: '#f3f4f6' }} />
+            )}
           </div>
         </div>
       )}
