@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    // ✅ 修改后（完美兼容 Cloudflare 边缘节点）：
+    "target": "es2020",
     "module": "ESNext",
     "moduleResolution": "node",
     "jsx": "react",
