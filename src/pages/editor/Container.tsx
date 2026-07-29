@@ -44,7 +44,7 @@ const Container = (props: {
   const [disabledComps, setDisabledComps] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/components/list')
+    fetch('/api/components/list')
       .then(r => r.json())
       .then(res => {
         if (res.code === 200 && res.data) {

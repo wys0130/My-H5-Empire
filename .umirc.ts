@@ -18,7 +18,6 @@ export default defineConfig({
       changeOrigin: true,
     },
   },
-  // exportStatic: {},
   base: '/',
   publicPath: '/',
   outputPath: 'dist',
@@ -29,50 +28,25 @@ export default defineConfig({
       path: '/',
       component: '@/layouts/index',
       routes: [
-        {
-          path: '/',
-          component: '../pages/home',
-        },
-        {
-          path: '/editor',
-          component: '../pages/editor',
-        },
-        {
-          path: '/ide',
-          component: '../pages/ide',
-        },
-        {
-          path: '/help',
-          component: '../pages/help',
-        },
-        {
-          path: '/login',
-          component: '../pages/login',
-        },
-        {
-          path: '/mobileTip',
-          component: '../pages/mobileTip',
-        },
-        {
-          path: '/preview',
-          component: '../pages/editor/preview',
-        },
+        { path: '/', component: '../pages/home' },
+        { path: '/editor', component: '../pages/editor' },
+        { path: '/ide', component: '../pages/ide' },
+        { path: '/help', component: '../pages/help' },
+        { path: '/login', component: '../pages/login' },
+        { path: '/mobileTip', component: '../pages/mobileTip' },
+        { path: '/preview', component: '../pages/editor/preview' },
       ],
     },
   ],
   theme: {
     'primary-color': '#E1251B',
-    // "btn-primary-bg": "#2F54EB"
   },
-  extraBabelPlugins: [['import', { libraryName: 'zarm', style: true }]],
-  // sass: {},
+
+  // 🚀 核心变化：删除了所有针对 zarm 的插件配置，不准系统再去多管闲事！
+
   alias: {
     components: path.resolve(__dirname, 'src/components/'),
     utils: path.resolve(__dirname, 'src/utils/'),
     assets: path.resolve(__dirname, 'src/assets/'),
-  },
-  // 🚀 加上这行 Less 兼容配置，彻底解决样式编译报错
-  lessLoader: {
-    javascriptEnabled: true,
   },
 });

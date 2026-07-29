@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[62],{"715R":function(n,e,o){"use strict";o.r(e);var t={editData:[{key:"qrcode",name:"\u4E8C\u7EF4\u7801",type:"Upload",isCrop:!0,cropRate:1},{key:"text",name:"\u6587\u5B57",type:"Text"},{key:"color",name:"\u6587\u5B57\u989C\u8272",type:"Color"},{key:"fontSize",name:"\u6587\u5B57\u5927\u5C0F",type:"Number"}],config:{qrcode:[{uid:"001",name:"image.png",status:"done",url:"http://49.234.61.19/uploads/code_173e1705e0c.png"}],text:"\u4E8C\u7EF4\u7801",color:"rgba(153,153,153,1)",fontSize:14}};e.default=t}}]);
+
+//# sourceMappingURL=62.js.map

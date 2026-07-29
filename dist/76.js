@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[76],{lAyZ:function(i,t,a){"use strict";a.r(t);var e={editData:[{key:"ak",name:"\u767E\u5EA6\u5730\u56FEAK",type:"Text"},{key:"position",name:"\u7ECF\u7EAC\u5EA6",type:"Pos",placeObj:{text:"\u4F7F\u7528\u767E\u5EA6\u62FE\u53D6\u5750\u6807\u7CFB\u7EDF\u83B7\u53D6\u5750\u6807",link:"http://api.map.baidu.com/lbsapi/getpoint/index.html"}},{key:"location",name:"\u5730\u5740",type:"TextArea"}],config:{ak:"\u4F60\u7684\u767E\u5EA6\u5730\u56FEak",position:[121.444017,31.237787],location:"\u4E0A\u6D77\u5E02"}};t.default=e}}]);
+
+//# sourceMappingURL=76.js.map

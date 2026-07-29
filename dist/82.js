@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[82],{"4ZOe":function(a,e,n){"use strict";n.r(e);var t={editData:[{key:"bgColor",name:"\u80CC\u666F\u989C\u8272",type:"Color"},{key:"money",name:"\u4F18\u60E0\u91D1\u989D",type:"Number"},{key:"ifText",name:"\u4F18\u60E0\u6761\u4EF6",type:"Text"},{key:"dealTime",name:"\u6709\u6548\u671F",type:"TextArea"},{key:"desc",name:"\u63D0\u793A\u4FE1\u606F",type:"TextArea"},{key:"link",name:"\u8DF3\u8F6C\u94FE\u63A5",type:"Text"}],config:{bgColor:"rgba(228,162,22,1)",money:50,link:"http://h5.dooring.cn",ifText:"\u6EE1199\u5143\u4F7F\u7528",dealTime:"2020.02.12-02.16",desc:"\u6709\u5BB6\u5E97\u94FA"}};e.default=t}}]);
+
+//# sourceMappingURL=82.js.map

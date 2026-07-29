@@ -34,6 +34,7 @@
   "dependencies": {
     "@ant-design/icons": "^4.8.3",
     "@antv/f2": "^3.7.7",
+    "@libsql/client": "^0.17.4",
     "@uiw/react-baidu-map": "^1.17.3",
     "@umijs/plugin-esbuild": "^1.0.1",
     "@umijs/plugin-sass": "^1.1.1",
@@ -72,7 +73,7 @@
     "xlsx": "^0.16.7",
     "yh-react-popover": "^0.3.0",
     "yorkie": "^2.0.0",
-    "zarm": "^2.5.1"
+    "zarm": "^3.4.2"
   },
   "license": "ISC",
   "devDependencies": {

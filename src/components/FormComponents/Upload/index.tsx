@@ -202,7 +202,7 @@ class PicturesWall extends React.Component<PicturesWallType> {
     } = this.state;
     const {
       // 🚀 核心修复：把你原本超时的内网 192.168.1.8 换成 localhost，解决上传卡死！
-      action = isDev ? 'http://localhost:3000/api/upload' : '/api/upload',
+      action = isDev ? '/api/upload' : '/api/upload',
       headers,
       withCredentials = true,
       maxLen = 1,

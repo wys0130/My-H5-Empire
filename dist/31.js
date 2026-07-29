@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[31],{"7Fva":function(l,e,t){"use strict";t.r(e);var s=t("q1tI"),a=t.n(s),n=t("udzn"),i=t.n(n),_=t("r1EE"),O=t.n(_),o=t("AfAZ"),r=t.n(o),d=Object(s.memo)(E=>{var v=E.poster,P=E.url,c=E.isTpl;return a.a.createElement(a.a.Fragment,null,c?a.a.createElement("div",null,a.a.createElement("img",{src:r.a,alt:""})):a.a.createElement("div",null,a.a.createElement(n.Player,{playsInline:!0,poster:v[0].url,src:P||"https://gossv.vcg.com/cmsUploadVideo/creative/1\u79FB\u8F74/7\u6708\u79FB\u8F74.mp4"},a.a.createElement(n.BigPlayButton,{position:"center"}))))});e.default=d},AfAZ:function(l,e,t){l.exports=t.p+"static/video.33b88ab5.png"}}]);
+
+//# sourceMappingURL=31.js.map

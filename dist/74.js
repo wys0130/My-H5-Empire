@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[74],{XMNe:function(r,e,o){"use strict";o.r(e);var a={editData:[{key:"time",name:"\u65E5\u5386\u65F6\u95F4",type:"Text",placeholder:"\u683C\u5F0F\u59822020-01\u62162020-11"},{key:"range",name:"\u65E5\u5386\u9009\u4E2D\u8303\u56F4",type:"Text",placeholder:"\u683C\u5F0F\u598201-12(\u51E0\u53F7\u5230\u51E0\u53F7)"},{key:"color",name:"\u6587\u672C\u989C\u8272",type:"Color"},{key:"selectedColor",name:"\u9009\u4E2D\u989C\u8272",type:"Color"},{key:"round",name:"\u5706\u89D2",type:"Number"}],config:{time:"2020-12",range:"05-08",color:"rgba(0,0,0,1)",selectedColor:"rgba(22,40,212,1)",round:0}};e.default=a}}]);
+
+//# sourceMappingURL=74.js.map

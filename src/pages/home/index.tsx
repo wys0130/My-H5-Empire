@@ -39,9 +39,9 @@ export default function HomePage() {
         const savedUser = JSON.parse(savedUserStr);
         // 如果是管理员，进入 B端财务与资产大盘；否则进入 C端核心生产力引擎
         if (savedUser.role === 'admin') {
-          history.push('/dashboard');
+          window.location.href = '/dashboard';
         } else {
-          history.push('/mall');
+          window.location.href = '/mall';
         }
       } catch (e) {
         // 解析异常则留在登录页
@@ -160,13 +160,16 @@ export default function HomePage() {
 
         if (res.code === 200) {
           localStorage.setItem('coolmall_user', JSON.stringify(res.data));
+          showNotification('🎉 验证通过，正在进入核心舱...', 'success');
 
-          // 🌟 终极优化：点击登录后的身份分流
-          if (res.data.role === 'admin') {
-            history.push('/dashboard');
-          } else {
-            history.push('/mall');
-          }
+          // 🌟 物理破门：废弃软弱无力的 history，直接强制浏览器重定向！
+          setTimeout(() => {
+            if (res.data.role === 'admin') {
+              window.location.href = '/dashboard';
+            } else {
+              window.location.href = '/mall';
+            }
+          }, 600);
         }
         else if (res.code === 403 && res.needCaptcha) {
           setNeedLoginVerify(true);

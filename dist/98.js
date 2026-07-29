@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[98],{hoyZ:function(r,e,t){"use strict";t.r(e);var n={editData:[{key:"theme",name:"\u4E3B\u9898",type:"Select",range:[{key:"success",text:"\u6210\u529F"},{key:"warning",text:"\u8B66\u544A"},{key:"danger",text:"\u5371\u9669"}]},{key:"shape",name:"\u5F62\u72B6",type:"Radio",range:[{key:"circle",text:"\u5706\u5F62"},{key:"line",text:"\u7EBF\u5F62"},{key:"semi-circle",text:"\u534A\u5706\u5F62"}]},{key:"size",name:"\u5927\u5C0F",type:"Number"},{key:"percent",name:"\u8FDB\u5EA6\u503C",type:"Number",range:[0,100]},{key:"strokeWidth",name:"\u7EBF\u6761\u7C97\u7EC6",type:"Number"}],config:{theme:"success",shape:"circle",size:200,percent:30,strokeWidth:10}};e.default=n}}]);
+
+//# sourceMappingURL=98.js.map

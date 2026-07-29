@@ -1,0 +1,13 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/login",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/login.js:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

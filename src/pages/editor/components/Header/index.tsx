@@ -59,7 +59,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const el = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board') || document.body;
       const canvas = await html2canvas(el as HTMLElement, { useCORS: true, scale: scaleMultiplier, logging: false, backgroundColor: '#ffffff', allowTaint: true });
       const base64 = canvas.toDataURL('image/jpeg', 0.6);
-      const res = await fetch('http://localhost:3000/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64 }) }).then(r => r.json());
+      const res = await fetch('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64 }) }).then(r => r.json());
       return res.code === 200 ? (res.url || res.data?.url) : absoluteFallback;
     } catch (e) {
       return absoluteFallback;
@@ -74,7 +74,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const tid = props.location.query?.tid || '';
       const previewUrl = `${window.location.protocol}//${window.location.host}/preview?tid=${tid}&gf=1`;
 
-      const res = await fetch('http://localhost:3000/api/render/screenshot', {
+      const res = await fetch('/api/render/screenshot', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: previewUrl, pointData: pointData })
       });
@@ -114,7 +114,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     message.loading({ content: '保存草稿中...', key: 'publish', duration: 0 });
     const workId = props.location.query?.tid || ('H5_' + Date.now());
 
-    const res = await fetch('http://localhost:3000/api/h5/save', {
+    const res = await fetch('/api/h5/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
       body: JSON.stringify({ workId: workId, title: saveTplName, schema: pointData, cover_url: faceUrl, is_published: 0 })
     }).then(r => r.json());
@@ -167,7 +167,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   );
 
   const uploadCoverProps = {
-    name: 'file', showUploadList: false, action: 'http://localhost:3000/api/upload',
+    name: 'file', showUploadList: false, action: '/api/upload',
     onChange(info: any) {
       if (info.file.status === 'done') { setFaceUrl(info.file.response.url); message.success('上传成功'); }
     },

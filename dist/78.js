@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[78],{"ef+k":function(a,e,t){"use strict";t.r(e);var n={editData:[{key:"poster",name:"\u89C6\u9891\u5C01\u9762",type:"Upload"},{key:"url",name:"\u89C6\u9891\u94FE\u63A5",type:"Text"}],config:{poster:[{uid:"001",name:"image.png",status:"done",url:"http://49.234.61.19/uploads/1_1740c6fbcd9.png"}],url:""}};e.default=n}}]);
+
+//# sourceMappingURL=78.js.map

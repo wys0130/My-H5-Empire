@@ -46,7 +46,7 @@ export default function ExcelEditor() {
                 }
             } catch (e) { console.warn('跨域截图受限'); }
 
-            const res = await fetch('http://localhost:3000/api/h5/save', {
+            const res = await fetch('/api/h5/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
                 body: JSON.stringify({

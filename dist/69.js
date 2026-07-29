@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[69],{BiCt:function(n,e,t){"use strict";t.r(e);var o={editData:[{key:"bgColor",name:"\u80CC\u666F\u8272",type:"Color"},{key:"height",name:"\u9AD8\u5EA6",type:"Number"},{key:"text",name:"\u6587\u5B57",type:"Text"},{key:"color",name:"\u6587\u5B57\u989C\u8272",type:"Color"},{key:"fontSize",name:"\u6587\u5B57\u5927\u5C0F",type:"Number"}],config:{bgColor:"rgba(255,255,255,1)",text:"",fontSize:16,color:"rgba(210,210,210,1)",height:30}};e.default=o}}]);
+
+//# sourceMappingURL=69.js.map

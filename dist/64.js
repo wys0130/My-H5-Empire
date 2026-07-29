@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[64],{TNQH:function(r,e,n){"use strict";n.r(e);var o={editData:[{key:"round",name:"\u8FB9\u6846\u5706\u89D2",type:"Number"},{key:"borderWidth",name:"\u8FB9\u6846\u5BBD\u5EA6",type:"Number"},{key:"borderColor",name:"\u8FB9\u6846\u989C\u8272",type:"Color"},{key:"padding",name:"\u5185\u8FB9\u8DDD",type:"Number"},{key:"content",name:"\u5185\u5BB9",type:"RichText"}],config:{round:0,borderWidth:0,borderColor:"rgba(255,255,255,1)",padding:0,content:""}};e.default=o}}]);
+
+//# sourceMappingURL=64.js.map

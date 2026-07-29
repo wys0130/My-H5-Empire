@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[71],{p6l7:function(s,e,a){"use strict";a.r(e),a.d(e,"baseConfig",function(){return t}),a.d(e,"baseDefault",function(){return b});var t=[{key:"baseTop",name:"\u7EB5\u5411\u4F4D\u79FB",type:"Number"},{key:"baseLeft",name:"\u6A2A\u5411\u4F4D\u79FB",type:"Number"},{key:"baseRadius",name:"\u5706\u89D2",type:"Number"},{key:"baseRotate",name:"\u65CB\u8F6C",type:"Number"},{key:"baseScale",name:"\u7F29\u653E",type:"Number"},{key:"baseHeight",name:"\u5BB9\u5668\u9AD8\u5EA6%",type:"Number"},{key:"baseWidth",name:"\u5BB9\u5668\u5BBD\u5EA6%",type:"Number"}],b={baseTop:0,baseLeft:0,baseRadius:0,baseRotate:0,baseScale:100,baseHeight:100,baseWidth:100}}}]);
+
+//# sourceMappingURL=71.js.map

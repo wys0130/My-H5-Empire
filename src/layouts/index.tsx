@@ -29,11 +29,11 @@ const MallPortal = () => {
   const user = userStr ? JSON.parse(userStr) : null;
 
   const loadData = () => {
-    fetch('http://localhost:3000/api/templates/list').then(r => r.json()).then(res => { if (res.code === 200) setTemplates(res.data || []); });
-    fetch('http://localhost:3000/api/settings/carousel').then(r => r.json()).then(res => { if (res.code === 200) setCarouselData(res.data || []); });
-    fetch('http://localhost:3000/api/settings/announcement').then(r => r.json()).then(res => { if (res.code === 200) setAnnouncement(res.data || ''); });
+    fetch('/api/templates/list').then(r => r.json()).then(res => { if (res.code === 200) setTemplates(res.data || []); });
+    fetch('/api/settings/carousel').then(r => r.json()).then(res => { if (res.code === 200) setCarouselData(res.data || []); });
+    fetch('/api/settings/announcement').then(r => r.json()).then(res => { if (res.code === 200) setAnnouncement(res.data || ''); });
     if (user) {
-      fetch('http://localhost:3000/api/h5/my-works', { headers: { 'x-role': user.role, 'x-user-id': user.userId?.toString() } })
+      fetch('/api/h5/my-works', { headers: { 'x-role': user.role, 'x-user-id': user.userId?.toString() } })
         .then(r => r.json()).then(res => { if (res.code === 200) setMyWorks(res.data || []); });
     }
   };
@@ -56,7 +56,7 @@ const MallPortal = () => {
 
   // 🌟 核心修复2：编辑作品也必须用 coolmall_pending_tpl 传递数据
   const handleEditWork = (work: any) => {
-    fetch(`http://localhost:3000/api/h5/work/${work.id}`).then(r => r.json()).then(res => {
+    fetch(`/api/h5/work/${work.id}`).then(r => r.json()).then(res => {
       if (res.code === 200) {
         let schemaStr = res.data.schema_json || '[]';
         if (typeof schemaStr !== 'string') schemaStr = JSON.stringify(schemaStr);
@@ -75,7 +75,7 @@ const MallPortal = () => {
   const togglePublishStatus = (e: any, work: any) => {
     e.stopPropagation();
     const targetStatus = work.is_published === 1 ? 0 : 1;
-    fetch('http://localhost:3000/api/h5/work/toggle-publish', {
+    fetch('/api/h5/work/toggle-publish', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
       body: JSON.stringify({ id: work.id, is_published: targetStatus })
     }).then(r => r.json()).then(res => {
@@ -94,7 +94,7 @@ const MallPortal = () => {
     Modal.confirm({
       title: `确认删除作品 "${work.title}" 吗？`,
       onOk: () => {
-        fetch('http://localhost:3000/api/h5/work/delete', {
+        fetch('/api/h5/work/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
           body: JSON.stringify({ id: work.id })
@@ -280,7 +280,7 @@ const AdminUsers = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const loadUsers = () => {
-    fetch('http://localhost:3000/api/admin/users/list', { headers: { 'x-role': 'admin', 'x-user-id': '1' } })
+    fetch('/api/admin/users/list', { headers: { 'x-role': 'admin', 'x-user-id': '1' } })
       .then(r => r.json()).then(res => setData(res.data || []));
   };
 
@@ -292,7 +292,7 @@ const AdminUsers = () => {
       return;
     }
     message.loading({ content: '正在创建账号...', key: 'create-user' });
-    fetch('http://localhost:3000/api/admin/users/add', {
+    fetch('/api/admin/users/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
       body: JSON.stringify(newUser)
@@ -395,13 +395,13 @@ const AdminHomepage = () => {
   const [announcementText, setAnnouncementText] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:3000/api/settings/carousel').then(r => r.json()).then(res => { if (res.data?.length > 0) setData(res.data); });
-    fetch('http://localhost:3000/api/settings/announcement').then(r => r.json()).then(res => { if (res.code === 200) setAnnouncementText(res.data || ''); });
+    fetch('/api/settings/carousel').then(r => r.json()).then(res => { if (res.data?.length > 0) setData(res.data); });
+    fetch('/api/settings/announcement').then(r => r.json()).then(res => { if (res.code === 200) setAnnouncementText(res.data || ''); });
   }, []);
 
   const save = () => {
-    fetch('http://localhost:3000/api/admin/settings/carousel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ data }) }).then(r => r.json());
-    fetch('http://localhost:3000/api/admin/settings/announcement', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ content: announcementText }) }).then(r => r.json()).then(() => message.success('主页配置全部保存成功！'));
+    fetch('/api/admin/settings/carousel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ data }) }).then(r => r.json());
+    fetch('/api/admin/settings/announcement', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ content: announcementText }) }).then(r => r.json()).then(() => message.success('主页配置全部保存成功！'));
   };
 
   return (
@@ -411,7 +411,10 @@ const AdminHomepage = () => {
           <h3 style={{ margin: 0, fontWeight: 'bold' }}>商城主页轮播图设置</h3>
           <p style={{ color: '#888', margin: '8px 0 0 0', fontSize: '13px' }}>* 请上传比例约为 3:1 的横向大图 (推荐尺寸: 1200x400 px，单张不超过 2MB)</p>
         </div>
-        <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff', height: '40px' }} onClick={save}>确认生效</Button>
+        <Space>
+          <Button type="dashed" onClick={() => setData([...data, { id: Date.now(), title: '', desc: '', image_url: '', bg: '' }])}>+ 添加轮播图</Button>
+          <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff', height: '40px' }} onClick={save}>确认生效</Button>
+        </Space>
       </div>
 
       <div style={{ marginBottom: 24, padding: 16, border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
@@ -424,19 +427,22 @@ const AdminHomepage = () => {
       </div>
 
       {data.map((item, i) => (
-        <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 16, padding: 16, border: '1px solid #f0f0f0', borderRadius: 8 }}>
-          <Upload action="http://localhost:3000/api/upload" showUploadList={false} onChange={(info) => {
+        <div key={item.id || i} style={{ display: 'flex', gap: 16, marginBottom: 16, padding: 16, border: '1px solid #f0f0f0', borderRadius: 8, position: 'relative' }}>
+          <Upload action="/api/upload" showUploadList={false} onChange={(info) => {
             if (info.file.size > 2 * 1024 * 1024) { message.error('图片不能超过 2MB！'); return; }
             if (info.file.status === 'done') { const nd = [...data]; nd[i].image_url = info.file.response.url; setData(nd); message.success('图片上传成功'); }
           }}>
             <div style={{ width: 150, height: 100, background: item.image_url ? `url(${item.image_url}) center/cover no-repeat` : '#fafafa', border: '1px dashed #d9d9d9', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              {!item.image_url && <span style={{ color: '#999', fontSize: '12px' }}>点击上传底图<br />(1200x400)</span>}
+              {!item.image_url && <span style={{ color: '#999', fontSize: '12px', textAlign: 'center' }}>点击上传底图<br />(1200x400)</span>}
             </div>
           </Upload>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center' }}>
             <Input placeholder="主标题文字" value={item.title} onChange={e => { const nd = [...data]; nd[i].title = e.target.value; setData(nd); }} />
             <Input placeholder="副标题文字" value={item.desc} onChange={e => { const nd = [...data]; nd[i].desc = e.target.value; setData(nd); }} />
           </div>
+          {data.length > 1 && (
+            <Button danger size="small" style={{ position: 'absolute', top: 12, right: 12 }} onClick={() => setData(data.filter((_, idx) => idx !== i))}>删除</Button>
+          )}
         </div>
       ))}
     </div>
@@ -451,13 +457,13 @@ const AdminAudit = () => {
   const [selectedLogKeys, setSelectedLogKeys] = useState<React.Key[]>([]);
 
   const load = () => {
-    fetch('http://localhost:3000/api/admin/all-works', { headers: { 'x-role': 'admin', 'x-user-id': '1' } }).then(r => r.json()).then(res => setData(res.data || []));
-    fetch('http://localhost:3000/api/admin/operation-logs', { headers: { 'x-role': 'admin', 'x-user-id': '1' } }).then(r => r.json()).then(res => setLogs(res.data || []));
+    fetch('/api/admin/all-works', { headers: { 'x-role': 'admin', 'x-user-id': '1' } }).then(r => r.json()).then(res => setData(res.data || []));
+    fetch('/api/admin/operation-logs', { headers: { 'x-role': 'admin', 'x-user-id': '1' } }).then(r => r.json()).then(res => setLogs(res.data || []));
   };
   useEffect(() => { load(); }, []);
 
   const toggle = (id: string, status: boolean) => {
-    fetch('http://localhost:3000/api/h5/work/toggle-publish', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id, is_published: status ? 1 : 0 }) }).then(() => { message.success('已刷新'); load(); });
+    fetch('/api/h5/work/toggle-publish', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id, is_published: status ? 1 : 0 }) }).then(() => { message.success('已刷新'); load(); });
   };
 
   const handleBatchForceDelete = () => {
@@ -466,7 +472,7 @@ const AdminAudit = () => {
       title: `确认批量强制销毁选中的 ${selectedWorkKeys.length} 个作品吗？`,
       onOk: () => {
         Promise.all(
-          selectedWorkKeys.map(id => fetch('http://localhost:3000/api/admin/force-delete-work', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id }) }).then(r => r.json()))
+          selectedWorkKeys.map(id => fetch('/api/admin/force-delete-work', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id }) }).then(r => r.json()))
         ).then(() => { message.success('批量销毁成功'); setSelectedWorkKeys([]); load(); });
       }
     });
@@ -478,7 +484,7 @@ const AdminAudit = () => {
       title: `确认批量删除选中的 ${selectedLogKeys.length} 条日志吗？`,
       onOk: () => {
         Promise.all(
-          selectedLogKeys.map(id => fetch('http://localhost:3000/api/admin/operation-logs/delete', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id }) }).then(r => r.json()))
+          selectedLogKeys.map(id => fetch('/api/admin/operation-logs/delete', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id }) }).then(r => r.json()))
         ).then(() => { message.success('日志批量删除成功'); setSelectedLogKeys([]); load(); });
       }
     });
@@ -491,7 +497,7 @@ const AdminAudit = () => {
     { title: '快照', dataIndex: 'cover_url', render: (url: string) => <img src={url} style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 4 }} /> },
     { title: '作品名', dataIndex: 'title' },
     { title: '状态', dataIndex: 'is_published', render: (val: number, r: any) => <Switch size="small" checked={val === 1} onChange={(c) => toggle(r.id, c)} checkedChildren="已上架" unCheckedChildren="已下架" /> },
-    { title: '操作', render: (_: any, r: any) => (<Button danger size="small" onClick={() => { Modal.confirm({ title: '确认销毁？', onOk: () => { fetch('http://localhost:3000/api/admin/force-delete-work', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id: r.id }) }).then(() => { message.success('已销毁并备份'); load(); }); } }); }}>强制销毁</Button>) }
+    { title: '操作', render: (_: any, r: any) => (<Button danger size="small" onClick={() => { Modal.confirm({ title: '确认销毁？', onOk: () => { fetch('/api/admin/force-delete-work', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id: r.id }) }).then(() => { message.success('已销毁并备份'); load(); }); } }); }}>强制销毁</Button>) }
   ];
 
   const logCols = [
@@ -507,7 +513,7 @@ const AdminAudit = () => {
             Modal.confirm({
               title: '确认删除这条日志吗？',
               onOk: () => {
-                fetch('http://localhost:3000/api/admin/operation-logs/delete', {
+                fetch('/api/admin/operation-logs/delete', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
                   body: JSON.stringify({ id: r.id })
@@ -570,12 +576,12 @@ const AdminComponents = () => {
   const [newComp, setNewComp] = useState({ name: '', icon: '📦', category: '基础组件' });
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  const load = () => fetch('http://localhost:3000/api/components/list').then(r => r.json()).then(res => setData(res.data || []));
+  const load = () => fetch('/api/components/list').then(r => r.json()).then(res => setData(res.data || []));
   useEffect(() => { load(); }, []);
 
   const toggleStatus = (id: number, currentStatus: number) => {
     const newStatus = currentStatus === 1 ? 0 : 1;
-    fetch('http://localhost:3000/api/admin/components/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id, status: newStatus }) })
+    fetch('/api/admin/components/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id, status: newStatus }) })
       .then(r => r.json()).then(res => {
         if (res.code === 200) { message.success('设置成功'); load(); }
         else { message.error(res.msg); }
@@ -587,7 +593,7 @@ const AdminComponents = () => {
 
     Promise.all(
       selectedRowKeys.map(id =>
-        fetch('http://localhost:3000/api/admin/components/toggle', {
+        fetch('/api/admin/components/toggle', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
           body: JSON.stringify({ id, status })
@@ -602,7 +608,7 @@ const AdminComponents = () => {
 
   const handleAdd = () => {
     if (!newComp.name) return message.warning('请输入名称');
-    fetch('http://localhost:3000/api/admin/components/add', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify(newComp) })
+    fetch('/api/admin/components/add', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify(newComp) })
       .then(r => r.json()).then(res => {
         if (res.code === 200) { message.success(res.msg); setIsModalVisible(false); load(); }
         else { message.error(res.msg); }
@@ -661,7 +667,7 @@ export default function BasicLayout(props: any) {
     sessionStorage.setItem('token', 'coolmall_bypass_token');
     (window as any).getFaceUrl = function () { };
 
-    fetch('http://localhost:3000/api/components/list').then(r => r.json()).then(res => {
+    fetch('/api/components/list').then(r => r.json()).then(res => {
       if (res.code === 200) {
         (window as any).__DISABLED_COMPONENTS__ = res.data.filter((c: any) => c.status === 0).map((c: any) => c.name);
       }
@@ -731,7 +737,8 @@ export default function BasicLayout(props: any) {
             </div>
           </Dropdown>
         </Header>
-        <Content style={{ margin: '24px', background: '#fff', borderRadius: '8px', padding: '24px', overflow: 'initial', minHeight: '80vh' }}>
+        {/* 🌟 核心修复3：给 Content 加上 overflowY: 'auto'，并指定高度，恢复页面滚动条 */}
+        <Content style={{ margin: '24px', background: '#fff', borderRadius: '8px', padding: '24px', overflowY: 'auto', height: 'calc(100vh - 112px)' }}>
           {path === '/dashboard' ? <Dashboard /> :
             path === '/users' ? <AdminUsers /> :
               path === '/finance' ? <Finance /> :

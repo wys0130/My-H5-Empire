@@ -162,7 +162,7 @@ img {
 
 @import '~react-grid-layout/css/styles.css'; 
 @import '~react-resizable/css/styles.css';
-@import '~zarm/dist/zarm.min.css';
+/*@import '~zarm/dist/zarm.min.css';*/
 
 @import '~codemirror/lib/codemirror.css';
 @import '~codemirror/theme/material.css';

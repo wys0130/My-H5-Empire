@@ -1,0 +1,3 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[92],{IG0b:function(n,e,a){"use strict";a.r(e);var t={editData:[{key:"title",name:"\u6807\u9898",type:"Text"},{key:"size",name:"\u6807\u9898\u5927\u5C0F",type:"Number"},{key:"color",name:"\u6807\u9898\u989C\u8272",type:"Color"},{key:"paddingTop",name:"\u4E0A\u8FB9\u8DDD",type:"Number"},{key:"data",name:"\u6570\u636E\u6E90",type:"Table"}],config:{title:"\u67F1\u72B6\u56FE",size:14,color:"rgba(0,0,0,1)",paddingTop:10,data:[{name:"A",value:20},{name:"B",value:60},{name:"C",value:20}]}};e.default=t}}]);
+
+//# sourceMappingURL=92.js.map
