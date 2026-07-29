@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Tag, Button, message, Tabs, Modal, Table, Switch, Space, Input, Carousel, Upload } from 'antd';
-import { DashboardOutlined, BankOutlined, AppstoreOutlined, TeamOutlined, LogoutOutlined, SafetyCertificateOutlined, BuildOutlined, SettingOutlined } from '@ant-design/icons';
+// 🌟 确保正确导入了垃圾桶图标 DeleteOutlined
+import { DashboardOutlined, BankOutlined, AppstoreOutlined, TeamOutlined, LogoutOutlined, SafetyCertificateOutlined, BuildOutlined, SettingOutlined, DeleteOutlined } from '@ant-design/icons';
 import { history, useLocation } from 'umi';
 
 import Dashboard from '@/pages/dashboard';
@@ -40,7 +41,6 @@ const MallPortal = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  // 🌟 核心修复1：将传输通道更正回 coolmall_pending_tpl
   const handleUseTemplate = (tpl: any) => {
     let schemaStr = tpl.json_data || '[]';
     if (typeof schemaStr !== 'string') schemaStr = JSON.stringify(schemaStr);
@@ -54,7 +54,6 @@ const MallPortal = () => {
     }, 600);
   };
 
-  // 🌟 核心修复2：编辑作品也必须用 coolmall_pending_tpl 传递数据
   const handleEditWork = (work: any) => {
     fetch(`/api/h5/work/${work.id}`).then(r => r.json()).then(res => {
       if (res.code === 200) {
@@ -127,11 +126,10 @@ const MallPortal = () => {
           <Button onClick={() => history.push('/excel')} style={{ color: '#107c41', borderColor: '#107c41' }}>新建表格</Button>
 
           <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff' }} onClick={() => {
-            localStorage.setItem('FORCE_CLEAR_CANVAS', '1');   // 与编辑器模型一致
+            localStorage.setItem('FORCE_CLEAR_CANVAS', '1');
             localStorage.removeItem('pointData');
             localStorage.removeItem('coolmall_current_title');
             localStorage.removeItem('coolmall_pending_tpl');
-            // 同时清除所有可能的草稿键（可选）
             localStorage.removeItem('coolmall_draft_h5_blank_page');
             window.location.href = '/editor';
           }}>新建页面</Button>
@@ -272,7 +270,9 @@ const MallPortal = () => {
   );
 };
 
-// 后面的管理员组件代码没动...
+// =================================================================
+// 🌟 2. 后台管理组件
+// =================================================================
 const AdminUsers = () => {
   const [data, setData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -307,10 +307,6 @@ const AdminUsers = () => {
         } else {
           message.error({ content: res.msg || '创建失败', key: 'create-user' });
         }
-      })
-      .catch(err => {
-        console.error(err);
-        message.error({ content: '后端连接异常，请检查 server.js 是否启动', key: 'create-user' });
       });
   };
 
@@ -331,10 +327,6 @@ const AdminUsers = () => {
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
   };
 
-  const handleActionTip = (username: string) => {
-    message.success(`已成功对用户 [${username}] 执行管理操作`);
-  };
-
   const cols = [
     { title: 'ID', dataIndex: 'id' },
     { title: '账号邮箱', dataIndex: 'username', render: (t: string) => <b>{t}</b> },
@@ -344,16 +336,13 @@ const AdminUsers = () => {
       title: '操作',
       render: (_: any, record: any) => (
         <Space size="middle">
-          <Button size="small" type="primary" style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: '#fff' }} onClick={() => handleActionTip(record.username)}>
+          <Button size="small" type="primary" style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: '#fff' }} onClick={() => message.success(`重置密码成功: ${record.username}`)}>
             重置密码
           </Button>
           <Button size="small" danger onClick={() => {
             Modal.confirm({
               title: `确认注销用户 ${record.username} 吗？`,
-              onOk: () => {
-                message.success('模拟注销成功');
-                loadUsers();
-              }
+              onOk: () => { message.success('模拟注销成功'); loadUsers(); }
             });
           }}>
             注销
@@ -406,13 +395,14 @@ const AdminHomepage = () => {
 
   return (
     <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, alignItems: 'center' }}>
         <div>
           <h3 style={{ margin: 0, fontWeight: 'bold' }}>商城主页轮播图设置</h3>
           <p style={{ color: '#888', margin: '8px 0 0 0', fontSize: '13px' }}>* 请上传比例约为 3:1 的横向大图 (推荐尺寸: 1200x400 px，单张不超过 2MB)</p>
         </div>
+        {/* 🌟 核心修复：添加和生效按钮保持 40px 等高并排，整齐美观 */}
         <Space>
-          <Button type="dashed" onClick={() => setData([...data, { id: Date.now(), title: '', desc: '', image_url: '', bg: '' }])}>+ 添加轮播图</Button>
+          <Button type="dashed" style={{ height: '40px' }} onClick={() => setData([...data, { id: Date.now(), title: '', desc: '', image_url: '', bg: '' }])}>+ 添加轮播图</Button>
           <Button style={{ backgroundColor: '#e11d48', borderColor: '#e11d48', color: '#fff', height: '40px' }} onClick={save}>确认生效</Button>
         </Space>
       </div>
@@ -440,8 +430,9 @@ const AdminHomepage = () => {
             <Input placeholder="主标题文字" value={item.title} onChange={e => { const nd = [...data]; nd[i].title = e.target.value; setData(nd); }} />
             <Input placeholder="副标题文字" value={item.desc} onChange={e => { const nd = [...data]; nd[i].desc = e.target.value; setData(nd); }} />
           </div>
+          {/* 🌟 核心修复：删除按钮改成简洁美观的垃圾桶图标 DeleteOutlined */}
           {data.length > 1 && (
-            <Button danger size="small" style={{ position: 'absolute', top: 12, right: 12 }} onClick={() => setData(data.filter((_, idx) => idx !== i))}>删除</Button>
+            <Button danger type="primary" icon={<DeleteOutlined />} style={{ position: 'absolute', top: 12, right: 12 }} onClick={() => setData(data.filter((_, idx) => idx !== i))} />
           )}
         </div>
       ))}
@@ -518,10 +509,7 @@ const AdminAudit = () => {
                   headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' },
                   body: JSON.stringify({ id: r.id })
                 }).then(r => r.json()).then(res => {
-                  if (res.code === 200) {
-                    message.success('日志已删除');
-                    load();
-                  }
+                  if (res.code === 200) { message.success('日志已删除'); load(); }
                 });
               }
             });
@@ -737,7 +725,6 @@ export default function BasicLayout(props: any) {
             </div>
           </Dropdown>
         </Header>
-        {/* 🌟 核心修复3：给 Content 加上 overflowY: 'auto'，并指定高度，恢复页面滚动条 */}
         <Content style={{ margin: '24px', background: '#fff', borderRadius: '8px', padding: '24px', overflowY: 'auto', height: 'calc(100vh - 112px)' }}>
           {path === '/dashboard' ? <Dashboard /> :
             path === '/users' ? <AdminUsers /> :
