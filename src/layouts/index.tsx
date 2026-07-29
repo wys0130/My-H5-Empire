@@ -674,6 +674,9 @@ export default function BasicLayout(props: any) {
         .ant-btn-primary { background-color: #e11d48 !important; border-color: #e11d48 !important; color: #fff !important; }
         .ant-btn-primary:hover { background-color: #be123c !important; border-color: #be123c !important; }
         .ant-table-body { overflow-y: auto !important; }
+
+        /* 👈 把这行直接粘贴加在这里 */
+        header .ant-btn { white-space: nowrap !important; flex-shrink: 0 !important; }
       `}
     </style>
   );
