@@ -60,19 +60,37 @@ export async function onRequest(context) {
         }
     ];
 
-    // 🌟 2. 永不掉线的超级管理员身份
-    if (url.pathname.includes('/currentUser') || url.pathname.includes('/user/info') || url.pathname.includes('/user/current')) {
+    // 🌟 升级版：真实图片上传接口（支持真实渲染，不再强行变 Logo！）
+    if (url.pathname.includes('/upload')) {
+        try {
+            const formData = await request.formData();
+            const file = formData.get('file') || formData.get('upfile') || formData.get('image');
+            if (file && typeof file === 'object') {
+                const arrayBuffer = await file.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                const base64 = btoa(binary);
+                const mimeType = file.type || 'image/png';
+                const dataUrl = `data:${mimeType};base64,${base64}`;
+
+                return new Response(JSON.stringify({
+                    code: 200,
+                    success: true,
+                    url: dataUrl,
+                    data: { url: dataUrl }
+                }), { headers: corsHeaders });
+            }
+        } catch (e) {
+            // 如果解析二进制失败，再平滑兜底
+        }
         return new Response(JSON.stringify({
             code: 200,
-            data: {
-                id: 1,
-                userId: 1,
-                username: "admin@coolmall.com",
-                name: "超级管理员",
-                role: "admin",
-                roles: ["admin"],
-                avatar: "/logo.png"
-            }
+            success: true,
+            url: "/logo.png",
+            data: { url: "/logo.png" }
         }), { headers: corsHeaders });
     }
 
