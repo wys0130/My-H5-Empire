@@ -50,52 +50,54 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
+  // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
   const captureCanvas = async (scaleMultiplier: number) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const el = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board') || document.body;
-      const canvas = await html2canvas(el as HTMLElement, { useCORS: true, scale: scaleMultiplier, logging: false, backgroundColor: '#ffffff', allowTaint: true });
-      const base64 = canvas.toDataURL('image/jpeg', 0.6);
-      const res = await fetch('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64 }) }).then(r => r.json());
+      // 优先抓取真实的画布容器，绝不抓取带有灰色背景的外部容器
+      const el = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.body;
+      const canvas = await html2canvas(el as HTMLElement, {
+        useCORS: true,
+        scale: scaleMultiplier,
+        logging: false,
+        backgroundColor: '#ffffff', // 强制指定纯白底，绝不留灰！
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: 0,
+      });
+      const base64 = canvas.toDataURL('image/jpeg', 0.85);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64 })
+      }).then(r => r.json());
       return res.code === 200 ? (res.url || res.data?.url) : absoluteFallback;
     } catch (e) {
       return absoluteFallback;
     }
   };
 
+  // 🌟 2. 去除不稳定的远程API截图，内外网一致走高效前端渲染
   const autoGenerateCover = async (isSilent = false) => {
     setIsCapturing(true);
-    if (!isSilent) message.loading({ content: '抓取封面中...', key: 'poster', duration: 0 });
+    if (!isSilent) message.loading({ content: '正在更新真实封面...', key: 'poster', duration: 0 });
 
     try {
-      const tid = props.location.query?.tid || '';
-      const previewUrl = `${window.location.protocol}//${window.location.host}/preview?tid=${tid}&gf=1`;
-
-      const res = await fetch('/api/render/screenshot', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: previewUrl, pointData: pointData })
-      });
-      const data = await res.json();
-
-      if (data.code === 200 && data.url && !data.url.includes('default.png')) {
-        setFaceUrl(data.url);
-        if (!isSilent) message.success({ content: '封面成功！', key: 'poster', duration: 2 });
-      } else {
-        throw new Error('后端超时');
-      }
-    } catch (e) {
-      const localUrl = await captureCanvas(1);
+      const localUrl = await captureCanvas(1.5);
       setFaceUrl(localUrl);
-      if (!isSilent) message.success({ content: '辅助截取成功！', key: 'poster', duration: 2 });
+      if (!isSilent) message.success({ content: '封面截图已更新！', key: 'poster', duration: 2 });
+    } catch (e) {
+      if (!isSilent) message.error({ content: '封面生成异常，请重试', key: 'poster', duration: 2 });
     } finally {
       setIsCapturing(false);
     }
   };
 
+  // 🌟 3. 核心修改：无论是否有旧封面，只要用户点击发布，强制根据画布最新内容重新截图！
   const openPublishModal = () => {
     setModalConfig({ visible: true });
-    if (!faceUrl) autoGenerateCover(true);
+    autoGenerateCover(true); // <--- 去掉了 if (!faceUrl) 判断，永远生成最新稿！
   };
 
   const handlePublishH5 = async () => {
