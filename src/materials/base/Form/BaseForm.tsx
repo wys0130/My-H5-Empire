@@ -1,15 +1,23 @@
 import React, { memo } from 'react';
+import { Input, Radio, Select, DatePicker } from 'antd';
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 interface FormControlItem {
   id: string;
-  type: 'Text' | 'Number' | 'TextArea' | 'MySelect' | string;
+  type: 'Text' | 'Textarea' | 'Number' | 'MyRadio' | 'MySelect' | 'Date' | 'MyTextTip' | string;
   label: string;
   placeholder?: string;
   options?: { label: string; value: string }[];
+  fontSize?: number;
+  color?: string;
 }
 
-const BaseForm = memo((props: any) => {
-  // 🌟 核心兼容机制：同时兼容 Dooring 引擎直接传参 props 或 props.config 嵌套
+// =================================================================
+// 🌟 1. 中间画布里的主表单渲染器（防白屏自带兜底数据）
+// =================================================================
+const BaseFormComp = memo((props: any) => {
   const cfg = props.config || props || {};
 
   const title = cfg.title || '表单定制组件';
@@ -19,7 +27,6 @@ const BaseForm = memo((props: any) => {
   const btnColor = cfg.btnColor || '#2563eb';
   const btnTextColor = cfg.btnTextColor || '#ffffff';
 
-  // 🌟 安全兜底：如果控件数组为空或不存在，默认展示两行经典输入框，保证画布100%有内容绝不白屏！
   const formControls: FormControlItem[] =
     Array.isArray(cfg.formControls) && cfg.formControls.length > 0
       ? cfg.formControls
@@ -48,7 +55,6 @@ const BaseForm = memo((props: any) => {
             fontWeight: 600,
             marginBottom: '14px',
             textAlign: 'center',
-            letterSpacing: '0.5px',
           }}
         >
           {title}
@@ -101,7 +107,7 @@ const BaseForm = memo((props: any) => {
                   </option>
                 ))}
               </select>
-            ) : item.type === 'TextArea' ? (
+            ) : item.type === 'Textarea' || item.type === 'TextArea' ? (
               <textarea
                 placeholder={item.placeholder || `请输入${item.label}`}
                 rows={2}
@@ -145,7 +151,6 @@ const BaseForm = memo((props: any) => {
             fontSize: '15px',
             fontWeight: 'bold',
             cursor: 'pointer',
-            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
           }}
         >
           提交
@@ -155,4 +160,87 @@ const BaseForm = memo((props: any) => {
   );
 });
 
+// =================================================================
+// 🌟 2. 核心大复活：完整挂载 7 大静态子组件，彻底击碎 #130 / undefined 报错！
+// =================================================================
+const BaseForm: any = BaseFormComp;
+
+BaseForm.Text = (props: any) => {
+  const { label, placeholder } = props;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px', padding: '4px 0' }}>
+      <span style={{ width: '70px', fontSize: '14px', color: '#333' }}>{label}</span>
+      <Input placeholder={placeholder || '请输入文本'} style={{ flex: 1 }} />
+    </div>
+  );
+};
+
+BaseForm.Textarea = (props: any) => {
+  const { label, placeholder } = props;
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%', gap: '8px', padding: '4px 0' }}>
+      <span style={{ width: '70px', fontSize: '14px', color: '#333', marginTop: '4px' }}>{label}</span>
+      <TextArea placeholder={placeholder || '请输入长文本'} rows={2} style={{ flex: 1 }} />
+    </div>
+  );
+};
+
+BaseForm.Number = (props: any) => {
+  const { label, placeholder } = props;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px', padding: '4px 0' }}>
+      <span style={{ width: '70px', fontSize: '14px', color: '#333' }}>{label}</span>
+      <Input type="number" placeholder={placeholder || '请输入数值'} style={{ flex: 1 }} />
+    </div>
+  );
+};
+
+BaseForm.MyRadio = (props: any) => {
+  const { label, options = [] } = props;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px', padding: '4px 0' }}>
+      <span style={{ width: '70px', fontSize: '14px', color: '#333' }}>{label}</span>
+      <Radio.Group style={{ flex: 1 }}>
+        {options.map((opt: any, idx: number) => (
+          <Radio key={idx} value={opt.value}>{opt.label}</Radio>
+        ))}
+      </Radio.Group>
+    </div>
+  );
+};
+
+BaseForm.MySelect = (props: any) => {
+  const { label, options = [] } = props;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px', padding: '4px 0' }}>
+      <span style={{ width: '70px', fontSize: '14px', color: '#333' }}>{label}</span>
+      <Select placeholder="请选择" style={{ flex: 1 }}>
+        {options.map((opt: any, idx: number) => (
+          <Option key={idx} value={opt.value}>{opt.label}</Option>
+        ))}
+      </Select>
+    </div>
+  );
+};
+
+BaseForm.Date = (props: any) => {
+  const { label } = props;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '8px', padding: '4px 0' }}>
+      <span style={{ width: '70px', fontSize: '14px', color: '#333' }}>{label}</span>
+      <DatePicker style={{ flex: 1 }} />
+    </div>
+  );
+};
+
+BaseForm.MyTextTip = (props: any) => {
+  const { label, fontSize = 12, color = 'rgba(0,0,0,1)' } = props;
+  return (
+    <div style={{ width: '100%', padding: '4px 0', fontSize: `${fontSize}px`, color: color }}>
+      {label}
+    </div>
+  );
+};
+
+export { BaseForm, BaseForm as Form };
 export default BaseForm;
