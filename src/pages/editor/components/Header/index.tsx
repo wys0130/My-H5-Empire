@@ -51,41 +51,45 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
-  const captureCanvas = async (scaleMultiplier: number) => {
+  // 🌟 终极版画布截图：锁定真实渲染容器，自动撑满全部子组件高度，彻底杜绝截断与错位
+  const captureCanvas = async (scaleMultiplier: number = 1) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      // 🌟 精准锁定整个画布渲染节点
-      const el = (document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board') || document.body) as HTMLElement;
-      if (!el) return absoluteFallback;
 
-      // 🌟 动态计算全部组件的总高度，彻底杜绝下方组件被截断、只拍到一半的问题！
-      const realHeight = Math.max(el.scrollHeight, el.clientHeight, 800);
-      const realWidth = Math.max(el.scrollWidth, el.clientWidth, 375);
+      // 精准定位到画布的核心白纸区域（兼容id或class选择器）
+      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board');
+      if (!targetEl) return absoluteFallback;
 
-      const canvas = await html2canvas(el, {
+      // 获取元素的实际渲染宽高，防止被固定视口高度限制
+      const width = (targetEl as HTMLElement).offsetWidth || 375;
+      const height = (targetEl as HTMLElement).scrollHeight || 667;
+
+      const canvas = await html2canvas(targetEl as HTMLElement, {
         useCORS: true,
         scale: scaleMultiplier,
         logging: false,
-        backgroundColor: '#ffffff', // 强制纯白底
+        backgroundColor: '#ffffff', // 强行设为纯白背景，绝对不带灰底
         allowTaint: true,
-        width: realWidth,
-        height: realHeight,
-        windowWidth: realWidth,
-        windowHeight: realHeight,
+        width: width,
+        height: height,
+        windowWidth: width,
+        windowHeight: height,
         x: 0,
         y: 0,
-        scrollX: 0,
-        scrollY: 0,
       });
+
       const base64 = canvas.toDataURL('image/jpeg', 0.9);
+
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64 })
       }).then(r => r.json());
+
       return res.code === 200 ? (res.url || res.data?.url) : absoluteFallback;
     } catch (e) {
+      console.error("Cover capture error:", e);
       return absoluteFallback;
     }
   };

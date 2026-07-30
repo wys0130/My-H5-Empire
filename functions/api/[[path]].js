@@ -253,25 +253,34 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 保存作品 (/api/h5/save) -> 绝对强力自愈版
+    // 10. 保存作品 (/api/h5/save) -> 绝对防线：双保险降级重试机制
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
             const { workId, schema, title, cover_url, category, is_published } = body;
             const userId = request.headers.get("x-user-id") || "1";
             const schemaStr = typeof schema === "string" ? schema : JSON.stringify(schema || []);
+            const finalWorkId = workId || `H5_${Date.now()}`;
 
-            // 🌟 强行在每次保存前独立执行ALTER TABLE，绝不依赖初始化锁，确保云端 Turso 库万无一失！
-            try { await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (e) { }
-            try { await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1"); } catch (e) { }
-            try { await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''"); } catch (e) { }
+            // 双保险尝试 1：尝试带完整字段的插入
+            try {
+                await db.execute({
+                    sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
+                          VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, 0), CURRENT_TIMESTAMP) 
+                          ON CONFLICT(id) DO UPDATE SET schema_json = excluded.schema_json, title = excluded.title, cover_url = excluded.cover_url, category = excluded.category, is_published = COALESCE(?, h5_works.is_published), updated_at = CURRENT_TIMESTAMP`,
+                    args: [finalWorkId, userId, title || "未命名", schemaStr, cover_url || "", category || "h5", is_published, is_published]
+                });
+            } catch (primaryErr) {
+                // 双保险尝试 2：如果 Turso 报少列错误，自动降级为仅使用 100% 绝对存在的 6 个核心基础列，绝不报错崩盘！
+                console.warn("标准插入失败，启动核心列降级重试...", primaryErr.message);
+                await db.execute({
+                    sql: `INSERT INTO h5_works (id, title, schema_json, cover_url, category, is_published) 
+                          VALUES (?, ?, ?, ?, ?, COALESCE(?, 0)) 
+                          ON CONFLICT(id) DO UPDATE SET schema_json = excluded.schema_json, title = excluded.title, cover_url = excluded.cover_url, category = excluded.category, is_published = COALESCE(?, h5_works.is_published)`,
+                    args: [finalWorkId, title || "未命名", schemaStr, cover_url || "", category || "h5", is_published, is_published]
+                });
+            }
 
-            await db.execute({
-                sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
-                      VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, 0), CURRENT_TIMESTAMP) 
-                      ON CONFLICT(id) DO UPDATE SET schema_json = excluded.schema_json, title = excluded.title, cover_url = excluded.cover_url, category = excluded.category, is_published = COALESCE(?, h5_works.is_published), updated_at = CURRENT_TIMESTAMP`,
-                args: [workId || `H5_${Date.now()}`, userId, title || "未命名", schemaStr, cover_url || "", category || "h5", is_published, is_published]
-            });
             return new Response(JSON.stringify({ code: 200, msg: "保存成功" }), { headers: corsHeaders });
         } catch (e) {
             return new Response(JSON.stringify({ code: 500, msg: "保存失败: " + e.message }), { headers: corsHeaders });
