@@ -52,13 +52,16 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
   // 🌟 真正全量捕获：自动动态计算画布全部组件的总高度 (scrollHeight)，拖10个组件也能从头到尾一字不落！
+  // 🌟 1. 自动计算整个画布真实的超长高度，不管拖2个还是10个组件，从头到尾一字不漏，强锁纯白纸底！
   const captureCanvas = async (scaleMultiplier: number) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
+      // 严格对准真实画布节点，不抓带阴影和灰色背景的外侧壳子
       const el = (document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board') || document.body) as HTMLElement;
+      if (!el) return absoluteFallback;
 
-      // 🌟 核心：获取全部组件叠加后的真正完整总高度与宽度，不再被 600px 截断！
+      // 🌟 核心点：对比 scrollHeight 和 clientHeight，取最大实际长图高度，彻底消灭被 600px 截断的问题！
       const realHeight = Math.max(el.scrollHeight, el.clientHeight, 667);
       const realWidth = Math.max(el.scrollWidth, el.clientWidth, 375);
 
@@ -66,7 +69,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         useCORS: true,
         scale: scaleMultiplier,
         logging: false,
-        backgroundColor: '#ffffff', // 强行指定纯白纸底，绝不留灰背景
+        backgroundColor: '#ffffff', // 🌟 100% 强锁纯白底，杜绝灰色底色
         allowTaint: true,
         width: realWidth,
         height: realHeight,
@@ -89,15 +92,15 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     }
   };
 
-  // 🌟 2. 去除不稳定的远程API截图，内外网一致走高效前端渲染
+  // 🌟 2. 纯前端渲染截图，去掉超时卡顿的远端请求
   const autoGenerateCover = async (isSilent = false) => {
     setIsCapturing(true);
-    if (!isSilent) message.loading({ content: '正在更新真实封面...', key: 'poster', duration: 0 });
+    if (!isSilent) message.loading({ content: '抓取封面中...', key: 'poster', duration: 0 });
 
     try {
       const localUrl = await captureCanvas(1.5);
       setFaceUrl(localUrl);
-      if (!isSilent) message.success({ content: '封面截图已更新！', key: 'poster', duration: 2 });
+      if (!isSilent) message.success({ content: '封面成功！', key: 'poster', duration: 2 });
     } catch (e) {
       if (!isSilent) message.error({ content: '封面生成异常，请重试', key: 'poster', duration: 2 });
     } finally {
@@ -105,10 +108,10 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     }
   };
 
-  // 🌟 3. 核心修改：无论是否有旧封面，只要用户点击发布，强制根据画布最新内容重新截图！
+  // 🌟 3. 每次点“发布作品”，无条件把刚修改过的内容重新截一遍！
   const openPublishModal = () => {
     setModalConfig({ visible: true });
-    autoGenerateCover(true); // <--- 去掉了 if (!faceUrl) 判断，永远生成最新稿！
+    autoGenerateCover(true);
   };
 
   const handlePublishH5 = async () => {

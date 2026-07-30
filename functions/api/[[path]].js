@@ -261,6 +261,11 @@ export async function onRequest(context) {
             const userId = request.headers.get("x-user-id") || "1";
             const schemaStr = typeof schema === "string" ? schema : JSON.stringify(schema || []);
 
+            // 🌟 强行放在 INSERT 正上方：无视内存锁，保存前自动检查并补齐列，绝不再报 no column！
+            await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
+
             await db.execute({
                 sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
               VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, 0), CURRENT_TIMESTAMP) 
