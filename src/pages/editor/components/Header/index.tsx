@@ -24,6 +24,42 @@ interface HeaderComponentProps {
   importTpl: any;
 }
 
+// 🌟 辅助工具：将网络图片安全转换为 Base64，彻底破解跨域 CDN 导致 canvas 截图空白的问题
+const urlToBase64 = async (url: string): Promise<string> => {
+  if (!url || url.startsWith('data:')) return url;
+  try {
+    // 1. 优先尝试 fetch 转 blob -> base64
+    const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    // 2. 如果 fetch 受到严格 CORS 限制，降级使用 Image + Canvas 读取
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch (e) {
+          resolve(url); // 兜底：原样放行，不卡死程序
+        }
+      };
+      img.onerror = () => resolve(url);
+      img.src = url;
+    });
+  }
+};
+
 const HeaderComponent = memo((props: HeaderComponentProps) => {
   const { pointData, location, clearData, undohandler, redohandler, importTpl } = props;
 
@@ -50,8 +86,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
-  // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
-  // 🌟 终极破局画布截图：精准计算绝对定位组件的总高度，彻底杜绝下方组件漏掉
+  // 🌟 终极工业级画布截图：解决跨域图片空白、下方组件被截断、字体与排版差异问题
   const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
@@ -61,10 +96,13 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       const el = targetEl as HTMLElement;
 
-      // 1. 深度计算：遍历画布内所有子节点的真实底部坐标，精准算出长图总高度
+      // 1. 等待全部网络字体与排版就绪，避免文字折行跑偏
+      await document.fonts.ready;
+
+      // 2. 深度计算：遍历画布内所有子节点的真实底部坐标，精准算出长图总高度
       let maxBottom = 800;
       const allElements = el.querySelectorAll('*');
-      allElements.rows || allElements.forEach?.((node: any) => {
+      allElements.forEach?.((node: any) => {
         if (node.offsetTop !== undefined && node.offsetHeight !== undefined) {
           const bottom = node.offsetTop + node.offsetHeight;
           if (bottom > maxBottom) maxBottom = bottom;
@@ -82,7 +120,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const renderHeight = maxBottom + 120;
       const renderWidth = el.offsetWidth || 375;
 
-      // 2. 临时强制撑开画布 DOM 高度
+      // 3. 临时强制撑开画布 DOM 高度
       const origHeight = el.style.height;
       const origMinHeight = el.style.minHeight;
       el.style.height = `${renderHeight}px`;
@@ -90,19 +128,56 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       const canvas = await html2canvas(el, {
         useCORS: true,
+        allowTaint: false,
         scale: scaleMultiplier,
         logging: false,
         backgroundColor: '#ffffff',
-        allowTaint: true,
         width: renderWidth,
         height: renderHeight,
         windowWidth: renderWidth,
         windowHeight: renderHeight,
         scrollY: 0,
         scrollX: 0,
+        // 🌟 核心杀手锏：在临时克隆的 DOM 上，把所有跨域网络图片和背景图实时转为 Base64！
+        onclone: (async (clonedDoc: Document) => {
+          const clonedEl = clonedDoc.getElementById('js_canvas') || clonedDoc.querySelector('.canvas');
+          if (!clonedEl) return;
+
+          // 关闭 CSS 动画与过渡，防止截取到过渡中途的歪斜中间帧
+          (clonedEl as HTMLElement).style.transition = 'none';
+          (clonedEl as HTMLElement).style.animation = 'none';
+
+          // 批量处理：将克隆 DOM 内所有 <img> 标签的网络 URL 转成 data:image base64
+          const imgTags = Array.from(clonedEl.querySelectorAll('img'));
+          await Promise.all(
+            imgTags.map(async (img) => {
+              const src = img.getAttribute('src') || '';
+              if (src && !src.startsWith('data:')) {
+                const base64 = await urlToBase64(src);
+                img.setAttribute('src', base64);
+              }
+            })
+          );
+
+          // 批量处理：将带有 background-image: url(...) 的节点全部替换为 base64
+          const allNodes = Array.from(clonedEl.querySelectorAll('*'));
+          await Promise.all(
+            allNodes.map(async (node) => {
+              const htmlNode = node as HTMLElement;
+              const bgImg = htmlNode.style?.backgroundImage || '';
+              if (bgImg && bgImg.includes('url(') && !bgImg.includes('data:')) {
+                const match = bgImg.match(/url\(['"]?(.*?)['"]?\)/);
+                if (match && match[1]) {
+                  const base64 = await urlToBase64(match[1]);
+                  htmlNode.style.backgroundImage = `url("${base64}")`;
+                }
+              }
+            })
+          );
+        }) as any
       });
 
-      // 3. 恢复画布原样
+      // 4. 恢复画布原样
       el.style.height = origHeight;
       el.style.minHeight = origMinHeight;
 
