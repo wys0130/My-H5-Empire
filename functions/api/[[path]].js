@@ -240,9 +240,9 @@ export async function onRequest(context) {
     }
 
     // 9. 我的作品拉取 (/api/h5/my-works) -> 智能容错：杜绝因用户ID错位导致“暂无作品”
+    // 9. 我的作品拉取 (/api/h5/my-works) -> 强力直查，确保“我的作品”面板秒亮
     if (pathname.includes("/api/h5/my-works")) {
         try {
-            // 🌟 降维打击：直接按更新时间倒序拉取所有作品，彻底解决多账号/ID错位导致“暂无作品”
             const res = await db.execute(`
                 SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date 
                 FROM h5_works 

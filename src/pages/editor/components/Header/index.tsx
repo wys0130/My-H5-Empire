@@ -126,19 +126,33 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       return;
     }
 
-    message.loading({ content: '保存草稿中...', key: 'publish', duration: 0 });
+    message.loading({ content: '正在发布到我的作品...', key: 'publish', duration: 0 });
     const workId = props.location.query?.tid || ('H5_' + Date.now());
 
+    // 🌟 核心修正：is_published 设为 1，直接存入“我的作品”，由你自主掌控上下架、编辑、删除！
     const res = await fetch('/api/h5/save', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': user?.role || 'user', 'x-user-id': user?.userId?.toString() || '1' },
-      body: JSON.stringify({ workId: workId, title: saveTplName, schema: pointData, cover_url: faceUrl, is_published: 0 })
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-role': user?.role || 'user',
+        'x-user-id': user?.userId?.toString() || '1'
+      },
+      body: JSON.stringify({
+        workId: workId,
+        title: saveTplName,
+        schema: pointData,
+        cover_url: faceUrl,
+        is_published: 1 // 1 代表正式发布至“我的作品”大盘
+      })
     }).then(r => r.json());
 
     if (res.code === 200) {
-      message.success({ content: '🚀 已存入您的私有草稿箱！', key: 'publish', duration: 3 });
+      message.success({ content: '🚀 已成功发布到我的作品！', key: 'publish', duration: 3 });
       setModalConfig({ visible: false });
-      history.push('/mall?tab=my');
-    } else message.error({ content: res.msg, key: 'publish', duration: 3 });
+      history.push('/mall?tab=my'); // 自动跳转至我的作品页
+    } else {
+      message.error({ content: res.msg || '发布失败', key: 'publish', duration: 3 });
+    }
   };
 
   const downLoadJson = () => saveAs(new Blob([JSON.stringify(pointData)], { type: 'text/plain;charset=utf-8' }), 'template.json');
