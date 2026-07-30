@@ -51,18 +51,29 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
+  // 🌟 真正全量捕获：自动动态计算画布全部组件的总高度 (scrollHeight)，拖10个组件也能从头到尾一字不落！
   const captureCanvas = async (scaleMultiplier: number) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      // 优先抓取真实的画布容器，绝不抓取带有灰色背景的外部容器
-      const el = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.body;
-      const canvas = await html2canvas(el as HTMLElement, {
+      const el = (document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board') || document.body) as HTMLElement;
+
+      // 🌟 核心：获取全部组件叠加后的真正完整总高度与宽度，不再被 600px 截断！
+      const realHeight = Math.max(el.scrollHeight, el.clientHeight, 667);
+      const realWidth = Math.max(el.scrollWidth, el.clientWidth, 375);
+
+      const canvas = await html2canvas(el, {
         useCORS: true,
         scale: scaleMultiplier,
         logging: false,
-        backgroundColor: '#ffffff', // 强制指定纯白底，绝不留灰！
+        backgroundColor: '#ffffff', // 强行指定纯白纸底，绝不留灰背景
         allowTaint: true,
+        width: realWidth,
+        height: realHeight,
+        windowWidth: realWidth,
+        windowHeight: realHeight,
+        x: 0,
+        y: 0,
         scrollX: 0,
         scrollY: 0,
       });
