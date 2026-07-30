@@ -34,47 +34,44 @@ export async function onRequest(context) {
         "Access-Control-Allow-Origin": "*",
     };
 
-    const getDb = () => createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
-
-    // =================================================================
-    // 🌟 核心表结构、初始账号、26个标准中文组件、真实AI心流和技能树一键入库
-    // =================================================================
-    async function ensureTablesBatch(db) {
-        const adminPwd = hashPassword("admin123456");
-        const userPwd = hashPassword("123456");
-
-        const batchSQLs = [
-            "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', vip_expire DATETIME DEFAULT NULL, failed_attempts INTEGER DEFAULT 0, parent_agent_id INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS otp_records (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, code TEXT, expires_at INTEGER, is_used BOOLEAN DEFAULT 0)",
-            "CREATE TABLE IF NOT EXISTS h5_works (id TEXT PRIMARY KEY, user_id INTEGER DEFAULT 1, title TEXT DEFAULT '未命名', subTitle TEXT DEFAULT '', schema_json TEXT, cover_url TEXT, category TEXT DEFAULT 'h5', is_published INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS financial_records (id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT UNIQUE, user_email TEXT, amount REAL, agent_id INTEGER DEFAULT 0, status TEXT DEFAULT 'success', remark TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS system_components (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, icon TEXT, category TEXT, status INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 1)",
-            "CREATE TABLE IF NOT EXISTS operation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, admin_id TEXT, action TEXT, target_id TEXT, backup_data TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS system_settings (key TEXT UNIQUE, value TEXT)",
-            `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin@coolmall.com', '${adminPwd}', 'admin')`,
-            `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (2, 'designer@coolmall.com', '${userPwd}', 'user')`,
-            `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('carousel', '[{"id":1,"title":"酷猫商业中枢","desc":"海量高质量 H5 落地页，全网一键分发","image_url":""},{"id":2,"title":"极速生产力引擎","desc":"无需代码，让创意瞬间落地商业化","image_url":""}]')`,
-            `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('announcement', '🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线，快来开启您的创意创作吧！')`,
-            `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_thoughts', '[{"id":"101","time":"10:30:15","title":"白天常规巡检","content":"正在监控平台流水、流量热力图及各模块流畅度...","type":"info"},{"id":"102","time":"02:15:00","title":"夜间深度自检","content":"Boss 已离线，神经网络开始全网矩阵搜索与商业复盘...","type":"thought"}]')`,
-            `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_proposals', '[{"id":"skill_auto_seo","title":"自动化双语 SEO 洗稿中枢","desc":"夜间侦测发现海外 Pinterest 对插画类模板流量扶持极大。已编写自动抓取、双语翻译并静默发帖的脚本原型。","status":"pending","type":"marketing"},{"id":"skill_webgl_3d","title":"WebGL 3D 旋转组件注入","desc":"竞品分析显示 3D 组件转化率溢价 20%。已抓取 Three.js 开源代码并封装，请求合入底层组件库。","status":"pending","type":"tech"}]')`
-        ];
-
-        await db.batch(batchSQLs, "write").catch((err) => {
-            console.error("Turso 批量初始化警告:", err);
-        });
-    }
+    // 🌟 双保险兼容：同时适配 TURSO_DATABASE_URL 和 TURSO_DB_URL，绝不因变量名失联！
+    const getDb = () => createClient({
+        url: env.TURSO_DATABASE_URL || env.TURSO_DB_URL,
+        authToken: env.TURSO_AUTH_TOKEN
+    });
 
     const db = getDb();
-    if (!isDbInitialized) {
-        await ensureTablesBatch(db);
-        isDbInitialized = true;
+
+    // =================================================================
+    // 🌟 核心表结构与初始化（拆分单条安全执行，绝不因某一条报错导致整张表建不起来）
+    // =================================================================
+    async function ensureTablesSafely(dbClient) {
+        try {
+            await dbClient.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', vip_expire DATETIME DEFAULT NULL, failed_attempts INTEGER DEFAULT 0, parent_agent_id INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").catch(() => { });
+            await dbClient.execute("CREATE TABLE IF NOT EXISTS otp_records (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, code TEXT, expires_at INTEGER, is_used BOOLEAN DEFAULT 0)").catch(() => { });
+            await dbClient.execute("CREATE TABLE IF NOT EXISTS h5_works (id TEXT PRIMARY KEY, user_id TEXT DEFAULT '1', title TEXT DEFAULT '未命名', subTitle TEXT DEFAULT '', schema_json TEXT, cover_url TEXT, category TEXT DEFAULT 'h5', is_published INTEGER DEFAULT 1, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)").catch(() => { });
+            await dbClient.execute("CREATE TABLE IF NOT EXISTS financial_records (id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT UNIQUE, user_email TEXT, amount REAL, agent_id INTEGER DEFAULT 0, status TEXT DEFAULT 'success', remark TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").catch(() => { });
+            await dbClient.execute("CREATE TABLE IF NOT EXISTS system_components (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, icon TEXT, category TEXT, status INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 1)").catch(() => { });
+            await dbClient.execute("CREATE TABLE IF NOT EXISTS operation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, admin_id TEXT, action TEXT, target_id TEXT, backup_data TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").catch(() => { });
+            await dbClient.execute("CREATE TABLE IF NOT EXISTS system_settings (key TEXT UNIQUE, value TEXT)").catch(() => { });
+
+            const adminPwd = hashPassword("admin123456");
+            const userPwd = hashPassword("123456");
+            await dbClient.execute({ sql: `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin@coolmall.com', ?, 'admin')`, args: [adminPwd] }).catch(() => { });
+            await dbClient.execute({ sql: `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (2, 'designer@coolmall.com', ?, 'user')`, args: [userPwd] }).catch(() => { });
+            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('carousel', '[{"id":1,"title":"酷猫商业中枢","desc":"海量高质量 H5 落地页，全网一键分发","image_url":""},{"id":2,"title":"极速生产力引擎","desc":"无需代码，让创意瞬间落地商业化","image_url":""}]')`).catch(() => { });
+            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('announcement', '🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线，快来开启您的创意创作吧！')`).catch(() => { });
+            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_thoughts', '[{"id":"101","time":"10:30:15","title":"白天常规巡检","content":"正在监控平台流水、流量热力图及各模块流畅度...","type":"info"},{"id":"102","time":"02:15:00","title":"夜间深度自检","content":"Boss 已离线，神经网络开始全网矩阵搜索与商业复盘...","type":"thought"}]')`).catch(() => { });
+            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_proposals', '[{"id":"skill_auto_seo","title":"自动化双语 SEO 洗稿中枢","desc":"夜间侦测发现海外 Pinterest 对插画类模板流量扶持极大。已编写自动抓取、双语翻译并静默发帖的脚本原型。","status":"pending","type":"marketing"},{"id":"skill_webgl_3d","title":"WebGL 3D 旋转组件注入","desc":"竞品分析显示 3D 组件转化率溢价 20%。已抓取 Three.js 开源代码并封装，请求合入底层组件库。","status":"pending","type":"tech"}]')`).catch(() => { });
+        } catch (err) {
+            console.error("数据库安全初始化警告:", err);
+        }
     }
 
-    // 🌟 唯一且正确的静默自愈补列（绝不重复声明 db）
-    await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
-    await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1").catch(() => { });
-    await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
-
+    if (!isDbInitialized) {
+        await ensureTablesSafely(db);
+        isDbInitialized = true;
+    }
 
     const pathname = url.pathname;
 
@@ -96,7 +93,7 @@ export async function onRequest(context) {
                     data: { userId: user.id, username: user.username, role: user.role, vipStatus: user.vip_expire }
                 }), { headers: corsHeaders });
             } catch (e) {
-                return new Response(JSON.stringify({ code: 500, msg: "登录异常" }), { headers: corsHeaders });
+                return new Response(JSON.stringify({ code: 500, msg: "登录异常: " + e.message }), { headers: corsHeaders });
             }
         }
     }
@@ -109,7 +106,7 @@ export async function onRequest(context) {
         }), { headers: corsHeaders });
     }
 
-    // 3. 用户列表查询 (/api/admin/users/list) -> 绝不空白！
+    // 3. 用户列表查询 (/api/admin/users/list)
     if (pathname.includes("/api/admin/users/list") || pathname.includes("/api/users/list") || pathname.includes("/users/list")) {
         try {
             const res = await db.execute("SELECT id, username, role, vip_expire, created_at as date FROM users ORDER BY id DESC");
@@ -127,7 +124,7 @@ export async function onRequest(context) {
         }
     }
 
-    // 4. 组件管理大盘拉取 (/api/components/list) -> 26个中文基础件全对齐！
+    // 4. 组件管理大盘拉取 (/api/components/list)
     if (pathname.includes("/api/components/list")) {
         try {
             const res = await db.execute("SELECT * FROM system_components ORDER BY sort_order ASC");
@@ -184,9 +181,7 @@ export async function onRequest(context) {
         }
     }
 
-    // =================================================================
-    // 🌟 7. 真正连入云数据库的 AI 员工实时心流与待办进化技能树 (/api/ai/*)
-    // =================================================================
+    // 7. AI 相关
     if (pathname.includes("/api/ai/thoughts")) {
         try {
             const res = await db.execute("SELECT value FROM system_settings WHERE key = 'ai_thoughts'");
@@ -207,7 +202,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 👑 真实审批接口：将技能树状态由 pending 设为 approved，真正入库更新！
     if (pathname.includes("/api/ai/approve-skill")) {
         try {
             const body = await request.json();
@@ -229,7 +223,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ code: 200, msg: "⏪ 已成功回滚至最近的安全快照版本！" }), { headers: corsHeaders });
     }
 
-    // 8. 商城大盘模板拉取 (/api/templates/list) -> 已对接 H5 与表格！
+    // 8. 商城大盘模板拉取 (/api/templates/list)
     if (pathname.includes("/api/templates/list")) {
         try {
             const res = await db.execute(`SELECT id, title, cover_url, schema_json as json_data, category, datetime(updated_at, 'localtime') as date FROM h5_works WHERE is_published = 1 ORDER BY updated_at DESC`);
@@ -239,9 +233,8 @@ export async function onRequest(context) {
         }
     }
 
-    // 9. 我的作品拉取 (/api/h5/my-works) -> 智能容错：杜绝因用户ID错位导致“暂无作品”
-    // 9. 我的作品拉取 (/api/h5/my-works) -> 强力直查，确保“我的作品”面板秒亮
-    if (pathname.includes("/api/h5/my-works")) {
+    // 9. 我的作品与后台大盘拉取接口 (/api/h5/my-works) -> 强力直查，确保“我的作品”面板秒亮！
+    if (pathname.includes("/api/h5/my-works") || pathname.includes("/api/admin/works") || pathname.includes("/api/works/list")) {
         try {
             const res = await db.execute(`
                 SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date 
@@ -258,11 +251,26 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 保存作品 (/api/h5/save) -> 降维打击纯净版：只用绝对稳妥的核心列，彻底消灭所有 SQLITE 报错！
+    // 10. 保存作品并发布到“我的作品” (/api/h5/save) -> 绝对强力直通版
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
             const { workId, schema, title, cover_url, category, is_published, data } = body;
+            const userId = request.headers.get("x-user-id") || "1";
+
+            // 每次保存前确保表存在
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS h5_works (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT DEFAULT '1',
+                    title TEXT,
+                    schema_json TEXT,
+                    cover_url TEXT,
+                    category TEXT DEFAULT 'h5',
+                    is_published INTEGER DEFAULT 1,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `).catch(() => { });
 
             const rawSchema = schema || data || [];
             const schemaStr = typeof rawSchema === "string" ? rawSchema : JSON.stringify(rawSchema);
@@ -270,20 +278,21 @@ export async function onRequest(context) {
             const finalTitle = title || "未命名作品";
             const finalCover = cover_url || "";
             const finalCategory = category || "h5";
-            const finalPub = is_published ? 1 : 0;
+            const finalPub = is_published !== undefined ? Number(is_published) : 1;
 
-            // 🌟 核心：彻底剥离 updated_at 与 user_id，只操作绝对存在的 6 个基础字段
             await db.execute({
-                sql: `INSERT INTO h5_works (id, title, schema_json, cover_url, category, is_published) 
-                      VALUES (?, ?, ?, ?, ?, COALESCE(?, 0)) 
+                sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) 
                       ON CONFLICT(id) DO UPDATE SET 
                         schema_json = excluded.schema_json, 
                         title = excluded.title, 
                         cover_url = excluded.cover_url, 
                         category = excluded.category, 
-                        is_published = excluded.is_published`,
+                        is_published = excluded.is_published,
+                        updated_at = CURRENT_TIMESTAMP`,
                 args: [
                     String(finalWorkId),
+                    String(userId),
                     String(finalTitle),
                     String(schemaStr),
                     String(finalCover),
@@ -296,13 +305,13 @@ export async function onRequest(context) {
                 headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
             });
         } catch (e) {
-            return new Response(JSON.stringify({ code: 500, msg: "保存失败: " + e.message }, null, 2), {
+            return new Response(JSON.stringify({ code: 500, msg: "后端报错: " + e.message }), {
                 headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
             });
         }
     }
 
-    // 11. 单个作品详情 (/api/h5/work/:id) -> 严格解析，绝不 undefined 导致白屏！
+    // 11. 单个作品详情 (/api/h5/work/:id)
     if (pathname.includes("/api/h5/work/") || pathname.includes("/work/")) {
         const parts = pathname.split("/");
         const workId = parts[parts.length - 1];
@@ -325,20 +334,16 @@ export async function onRequest(context) {
         }
     }
 
-    // 12. 图片上传 (/api/upload) -> 兼容 JSON 截图数据与 FormData 上传，封面不再变 LOGO！
+    // 12. 图片上传 (/api/upload)
     if (pathname.includes("/api/upload")) {
         try {
             const contentType = request.headers.get("content-type") || "";
-
-            // 🌟 优先读取前端生成的 JSON Base64 截图，保证真实海报封面能正确存回
             if (contentType.includes("application/json")) {
                 const body = await request.json();
                 if (body && (body.image || body.url)) {
                     return new Response(JSON.stringify({ code: 200, url: body.image || body.url }), { headers: corsHeaders });
                 }
             }
-
-            // 🌟 兼容文件类型的 FormData 上传
             const formData = await request.formData();
             const file = formData.get("file") || formData.get("upfile") || formData.get("image");
             if (file && typeof file === "object") {
