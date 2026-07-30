@@ -70,16 +70,11 @@ export async function onRequest(context) {
         isDbInitialized = true;
     }
 
-    // 🌟 核心自愈：每次请求独立静默检测并补齐字段，彻底消灭 updated_at / user_id 找不到列的 SQLite 报错！
+    // 🌟 唯一且正确的静默自愈补列（绝不重复声明 db）
     await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
     await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1").catch(() => { });
     await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
 
-    const db = getDb();
-    if (!isDbInitialized) {
-        await ensureTablesBatch(db);
-        isDbInitialized = true;
-    }
 
     const pathname = url.pathname;
 
