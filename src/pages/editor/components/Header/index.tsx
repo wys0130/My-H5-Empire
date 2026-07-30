@@ -3,7 +3,7 @@ import { Button, Input, Modal, Upload, Tooltip, Badge, message, Result, Spin, Ta
 import {
   ArrowLeftOutlined, MobileOutlined, DownloadOutlined, CopyOutlined, DeleteOutlined,
   UndoOutlined, RedoOutlined, FileAddOutlined, CloudUploadOutlined, UploadOutlined,
-  InstagramOutlined, UserOutlined, SendOutlined, ShoppingCartOutlined, DownOutlined
+  InstagramOutlined, UserOutlined, SendOutlined, ShoppingCartOutlined, DownOutlined, AppstoreOutlined
 } from '@ant-design/icons';
 import { history } from 'umi';
 import QRCode from 'qrcode.react';
@@ -187,84 +187,93 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   );
 
   return (
-    // 🌟 100% 物理重构：用 inline style 强制定下 Flex 规范，彻底打穿 LESS 中的绝对定位层叠冲突！
+    // 🌟 100% 紧凑布局：去掉旧版 minWidth，改为 width: 100% 与合适间距，保证所有按钮单行展平不换行！
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: '60px',
-        padding: '0 24px',
+        height: '56px',
+        padding: '0 16px',
         backgroundColor: '#fff',
         borderBottom: '1px solid #f0f0f0',
-        minWidth: '1100px',
-        overflowX: 'auto',
+        width: '100%',
         boxSizing: 'border-box',
-        gap: '20px',
+        overflow: 'hidden',
+        gap: '12px',
       }}
     >
       {/* 🔴 左侧区：返回按钮 + 品牌 + 作品名称设置 */}
-      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '10px' }}>
         <div onClick={toBack} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
-          <ArrowLeftOutlined style={{ fontSize: '18px', color: '#666' }} />
+          <ArrowLeftOutlined style={{ fontSize: '16px', color: '#666' }} />
         </div>
-        <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#e11d48' }}>CoolMall 创作者引擎</div>
-        <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #eaeaea', paddingLeft: '12px' }}>
-          <span style={{ color: '#999', fontSize: '13px', marginRight: '6px', whiteSpace: 'nowrap' }}>当前作品:</span>
+        <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#e11d48', whiteSpace: 'nowrap' }}>CoolMall 引擎</div>
+        <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #eaeaea', paddingLeft: '8px' }}>
+          <span style={{ color: '#999', fontSize: '12px', marginRight: '4px', whiteSpace: 'nowrap' }}>当前作品:</span>
           <Input
             value={saveTplName}
             onChange={e => setSaveTplName(e.target.value)}
             bordered={false}
             placeholder="未命名作品"
-            style={{ width: '150px', fontWeight: 'bold', color: '#e11d48', borderBottom: '1px dashed #e11d48', borderRadius: 0 }}
+            style={{ width: '130px', fontWeight: 'bold', color: '#e11d48', borderBottom: '1px dashed #e11d48', borderRadius: 0 }}
           />
         </div>
       </div>
 
-      {/* 🟡 中央操作区：撤销/重做/清空/预览 —— 彻底去除 position: absolute，水平平铺绝不折行 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-        <Button onClick={undohandler} disabled={!pointData.length} icon={<UndoOutlined />}>撤销</Button>
-        <Button onClick={redohandler} disabled={!pointData.length} icon={<RedoOutlined />}>重做</Button>
-        <Button onClick={deleteAll} disabled={!pointData.length} danger icon={<DeleteOutlined />}>清空</Button>
+      {/* 🟡 中央操作区：撤销/重做/清空/预览 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+        <Button size="small" onClick={undohandler} disabled={!pointData.length} icon={<UndoOutlined />}>撤销</Button>
+        <Button size="small" onClick={redohandler} disabled={!pointData.length} icon={<RedoOutlined />}>重做</Button>
+        <Button size="small" onClick={deleteAll} disabled={!pointData.length} danger icon={<DeleteOutlined />}>清空</Button>
 
-        <div style={{ width: '1px', height: '18px', background: '#e5e7eb', margin: '0 4px' }}></div>
+        <div style={{ width: '1px', height: '16px', background: '#e5e7eb', margin: '0 2px' }}></div>
 
         <MyPopover content={content()} directions="BOTTOM">
-          <Button type="default" disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
+          <Button size="small" disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
         </MyPopover>
-        <Button type="default" onClick={toPreview} disabled={!pointData.length}>电脑预览</Button>
+        <Button size="small" onClick={toPreview} disabled={!pointData.length}>电脑预览</Button>
         <Dropdown overlay={moreMenu} placement="bottomCenter" trigger={['click']}>
-          <Button>更多 <DownOutlined style={{ marginLeft: 2 }} /></Button>
+          <Button size="small">更多 <DownOutlined style={{ marginLeft: 2 }} /></Button>
         </Dropdown>
       </div>
 
-      {/* 🟢 右侧收尾区：返回我的作品 / 保存草稿 / 用户入口 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-        <Button onClick={() => history.push('/mall?tab=my')} style={{ borderColor: '#e11d48', color: '#e11d48' }}>
+      {/* 🟢 右侧收尾区：只保留唯一的一颗登录/我的/后台管理按钮，彻底解决重复显出两颗“后台” */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <Button size="small" onClick={() => history.push('/mall?tab=my')} style={{ borderColor: '#e11d48', color: '#e11d48' }}>
           我的作品
         </Button>
-        <Button type="primary" icon={<SendOutlined />} onClick={openPublishModal}>
-          发布到我的作品
+        <Button size="small" type="primary" icon={<SendOutlined />} onClick={openPublishModal}>
+          发布作品
         </Button>
 
-        {/* 🌟 在这里加这一行：无条件常驻显示【后台管理】按钮，想进随时进，绝对不隐藏！ */}
-        <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff', fontWeight: 'bold' }} onClick={() => history.push('/dashboard')}>
-          后台管理
-        </Button>
-
-        {user && !isAdmin ? (
+        {isAdmin ? (
+          <Button
+            size="small"
+            style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff', fontWeight: 'bold' }}
+            icon={<AppstoreOutlined />}
+            onClick={() => history.push('/dashboard')}
+          >
+            后台管理
+          </Button>
+        ) : user ? (
           <Popover content={popoverContent} title={<span>个人中心</span>} trigger="click" placement="bottomRight">
-            <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }} icon={<UserOutlined />}>我的</Button>
+            <Button size="small" style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }} icon={<UserOutlined />}>我的</Button>
           </Popover>
         ) : (
           <Button
+            size="small"
             style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }}
             icon={<UserOutlined />}
-            onClick={() => { if (!user) { history.push('/'); } else if (isAdmin) { history.push('/dashboard'); } }}
+            onClick={() => history.push('/')}
           >
-            {!user ? '登录' : '后台'}
+            登录
           </Button>
         )}
+
+        <Button size="small" onClick={() => { localStorage.removeItem('coolmall_user'); history.push('/'); }}>
+          退出
+        </Button>
       </div>
 
       {/* 封面海报模态框与草稿弹窗 */}
