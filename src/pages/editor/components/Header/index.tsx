@@ -51,36 +51,38 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
-  // 🌟 终极版画布截图：锁定真实渲染容器，自动撑满全部子组件高度，彻底杜绝截断与错位
+  // 🌟 核心修复：截屏前临时解除高度与溢出限制，确保 3 个甚至 10 个组件全盘拍下，绝不只截第一屏！
   const captureCanvas = async (scaleMultiplier: number = 1) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-
-      // 精准定位到画布的核心白纸区域（兼容id或class选择器）
       const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board');
       if (!targetEl) return absoluteFallback;
 
-      // 获取元素的实际渲染宽高，防止被固定视口高度限制
-      const width = (targetEl as HTMLElement).offsetWidth || 375;
-      const height = (targetEl as HTMLElement).scrollHeight || 667;
+      const el = targetEl as HTMLElement;
+      const originalHeight = el.style.height;
+      const originalOverflow = el.style.overflow;
+      const fullHeight = el.scrollHeight;
 
-      const canvas = await html2canvas(targetEl as HTMLElement, {
+      // 临时撑满全高并允许溢出可见
+      el.style.height = `${fullHeight}px`;
+      el.style.overflow = 'visible';
+
+      const canvas = await html2canvas(el, {
         useCORS: true,
         scale: scaleMultiplier,
         logging: false,
-        backgroundColor: '#ffffff', // 强行设为纯白背景，绝对不带灰底
+        backgroundColor: '#ffffff', // 强制纯白底
         allowTaint: true,
-        width: width,
-        height: height,
-        windowWidth: width,
-        windowHeight: height,
-        x: 0,
-        y: 0,
+        windowWidth: el.scrollWidth || 375,
+        windowHeight: fullHeight,
       });
 
-      const base64 = canvas.toDataURL('image/jpeg', 0.9);
+      // 恢复DOM原样
+      el.style.height = originalHeight;
+      el.style.overflow = originalOverflow;
 
+      const base64 = canvas.toDataURL('image/jpeg', 0.9);
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
