@@ -251,26 +251,23 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 保存作品并发布到“我的作品” (/api/h5/save) -> 绝对强力直通版
+    // 10. 保存作品并发布到“我的作品” (/api/h5/save) -> 终极防线版
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
             const { workId, schema, title, cover_url, category, is_published, data } = body;
             const userId = request.headers.get("x-user-id") || "1";
 
-            // 每次保存前确保表存在
-            await db.execute(`
-                CREATE TABLE IF NOT EXISTS h5_works (
-                    id TEXT PRIMARY KEY,
-                    user_id TEXT DEFAULT '1',
-                    title TEXT,
-                    schema_json TEXT,
-                    cover_url TEXT,
-                    category TEXT DEFAULT 'h5',
-                    is_published INTEGER DEFAULT 1,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `).catch(() => { });
+            // 🌟 1. 暴力自愈：不管老表缺什么列，直接用 ALTER TABLE 强行补齐，捕获异常忽略冲突
+            await db.execute("CREATE TABLE IF NOT EXISTS h5_works (id TEXT PRIMARY KEY)").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN user_id TEXT DEFAULT '1'").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN title TEXT").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN schema_json TEXT").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN cover_url TEXT").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN category TEXT DEFAULT 'h5'").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN is_published INTEGER DEFAULT 1").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
 
             const rawSchema = schema || data || [];
             const schemaStr = typeof rawSchema === "string" ? rawSchema : JSON.stringify(rawSchema);
@@ -280,16 +277,16 @@ export async function onRequest(context) {
             const finalCategory = category || "h5";
             const finalPub = is_published !== undefined ? Number(is_published) : 1;
 
+            // 🌟 2. 写入数据库（完全避开任何未定义的字段风险）
             await db.execute({
-                sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
-                      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) 
+                sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?) 
                       ON CONFLICT(id) DO UPDATE SET 
                         schema_json = excluded.schema_json, 
                         title = excluded.title, 
                         cover_url = excluded.cover_url, 
                         category = excluded.category, 
-                        is_published = excluded.is_published,
-                        updated_at = CURRENT_TIMESTAMP`,
+                        is_published = excluded.is_published`,
                 args: [
                     String(finalWorkId),
                     String(userId),

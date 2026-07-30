@@ -59,7 +59,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       if (!targetEl) return absoluteFallback;
 
       const el = targetEl as HTMLElement;
-      // 动态获取整张画布包含底部所有组件的绝对总高度
       const fullHeight = Math.max(el.scrollHeight, el.offsetHeight, 1000);
       const fullWidth = Math.max(el.scrollWidth, el.offsetWidth, 375);
 

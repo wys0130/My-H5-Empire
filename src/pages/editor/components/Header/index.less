@@ -106,3 +106,39 @@
   gap: 8px;
   flex: 1;
 }
+
+/* 🌟 终极修复右侧表单属性栏：减号、文字、编辑笔重叠挤压 */
+:global {
+
+  .ant-form-item,
+  [class*="formItem"],
+  [class*="controlItem"],
+  [class*="FormItem"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  /* 保证左侧拖拽/删除按钮区独立 */
+  [class*="leftAction"],
+  [class*="dragArea"],
+  [class*="removeBtn"] {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  /* 保证右侧输入框与编辑图标自适应撑开，绝不重叠 */
+  [class*="rightAction"],
+  [class*="inputArea"],
+  [class*="editIcon"] {
+    flex: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+  }
+}
