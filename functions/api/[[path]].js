@@ -1,5 +1,8 @@
 import { createClient } from "@libsql/client/web";
 
+// 🌟 核心性能救星：全局内存初始化锁（保证每次部署启动只建表1次，杜绝每次点击卡4秒！）
+let isDbInitialized = false;
+
 export async function onRequest(context) {
     const { request, env } = context;
     const url = new URL(request.url);
@@ -21,7 +24,6 @@ export async function onRequest(context) {
 
     const getDb = () => createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
 
-    // 🌟 初始化 Turso 数据库表结构与默认数据（与本地 server.js 完全对齐）
     async function ensureTables(db) {
         await db.execute(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', vip_expire DATETIME DEFAULT NULL, failed_attempts INTEGER DEFAULT 0, parent_agent_id INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         await db.execute(`CREATE TABLE IF NOT EXISTS otp_records (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, code TEXT, expires_at INTEGER, is_used BOOLEAN DEFAULT 0)`);
@@ -31,7 +33,6 @@ export async function onRequest(context) {
         await db.execute(`CREATE TABLE IF NOT EXISTS operation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, admin_id TEXT, action TEXT, target_id TEXT, backup_data TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
         await db.execute(`CREATE TABLE IF NOT EXISTS system_settings (key TEXT UNIQUE, value TEXT)`);
 
-        // 检查并初始化 26 个标准组件
         const compRes = await db.execute("SELECT COUNT(*) as count FROM system_components");
         if (Number(compRes.rows[0].count) === 0) {
             const defaultComps = [
@@ -75,11 +76,14 @@ export async function onRequest(context) {
     }
 
     const db = getDb();
-    await ensureTables(db).catch(() => { });
+    // 🌟 只在初次冷启动时跑一次表检查，后续接口访问卡顿降为 0！
+    if (!isDbInitialized) {
+        await ensureTables(db).catch(() => { });
+        isDbInitialized = true;
+    }
 
     const pathname = url.pathname;
 
-    // 1. 登录与鉴权
     if (pathname.includes('/api/login')) {
         if (request.method === "POST") {
             try {
@@ -96,7 +100,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 2. 当前用户身份校验
     if (pathname.includes('/currentUser') || pathname.includes('/user/info') || pathname.includes('/user/current')) {
         return new Response(JSON.stringify({
             code: 200,
@@ -104,7 +107,6 @@ export async function onRequest(context) {
         }), { headers: corsHeaders });
     }
 
-    // 3. 组件列表拉取 (/api/components/list)
     if (pathname.includes('/api/components/list')) {
         try {
             const res = await db.execute("SELECT * FROM system_components ORDER BY sort_order ASC");
@@ -114,7 +116,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 4. 轮播图配置
     if (pathname.includes('/api/settings/carousel') || pathname.includes('/api/admin/settings/carousel')) {
         if (request.method === "POST" || request.method === "PUT") {
             try {
@@ -138,7 +139,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 5. 公告栏
     if (pathname.includes('/api/settings/announcement') || pathname.includes('/api/admin/settings/announcement')) {
         if (request.method === "POST" || request.method === "PUT") {
             try {
@@ -161,7 +161,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 6. 商城大盘模板拉取 (/api/templates/list)
     if (pathname.includes('/api/templates/list')) {
         try {
             const res = await db.execute(`SELECT id, title, cover_url, schema_json as json_data, category, datetime(updated_at, 'localtime') as date FROM h5_works WHERE is_published = 1 ORDER BY updated_at DESC`);
@@ -171,7 +170,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 7. 我的作品拉取 (/api/h5/my-works)
     if (pathname.includes('/api/h5/my-works')) {
         const userId = request.headers.get('x-user-id') || '1';
         try {
@@ -185,7 +183,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 8. 保存作品 (/api/h5/save)
     if (pathname.includes('/api/h5/save') || pathname.includes('/api/work/add')) {
         try {
             const body = await request.json();
@@ -205,7 +202,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 9. 单个作品读取 (/api/h5/work/:id)
     if (pathname.includes('/api/h5/work/')) {
         const parts = pathname.split('/');
         const workId = parts[parts.length - 1];
@@ -228,7 +224,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 用户列表与管理
     if (pathname.includes('/api/admin/users/list') || pathname.includes('/api/users/list')) {
         try {
             const res = await db.execute("SELECT id, username, role, vip_expire, datetime(created_at, 'localtime') as date FROM users ORDER BY id DESC");
@@ -238,7 +233,6 @@ export async function onRequest(context) {
         }
     }
 
-    // 11. 图片上传 (/api/upload)
     if (pathname.includes('/api/upload')) {
         try {
             const formData = await request.formData();
@@ -259,7 +253,6 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ code: 200, url: '/logo.png' }), { headers: corsHeaders });
     }
 
-    // 12. 默认兜底
     return new Response(JSON.stringify({
         code: 200,
         success: true,

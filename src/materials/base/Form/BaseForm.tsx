@@ -8,40 +8,36 @@ interface FormControlItem {
   options?: { label: string; value: string }[];
 }
 
-interface BaseFormProps {
-  config: {
-    title?: string;
-    fontSize?: number;
-    titColor?: string;
-    titWeight?: string | number;
-    bgColor?: string;
-    btnColor?: string;
-    btnTextColor?: string;
-    formControls?: FormControlItem[];
-  };
-}
+const BaseForm = memo((props: any) => {
+  // 🌟 核心兼容机制：同时兼容 Dooring 引擎直接传参 props 或 props.config 嵌套
+  const cfg = props.config || props || {};
 
-const BaseForm = memo((props: BaseFormProps) => {
-  const {
-    title = '表单定制组件',
-    fontSize = 18,
-    titColor = 'rgba(60,60,60,1)',
-    titWeight = 400,
-    bgColor = 'rgba(255,255,255,1)',
-    btnColor = '#1890ff',
-    btnTextColor = '#ffffff',
-    formControls = [],
-  } = props.config || {};
+  const title = cfg.title || '表单定制组件';
+  const fontSize = cfg.fontSize || 18;
+  const titColor = cfg.titColor || '#1f2937';
+  const bgColor = cfg.bgColor || '#ffffff';
+  const btnColor = cfg.btnColor || '#2563eb';
+  const btnTextColor = cfg.btnTextColor || '#ffffff';
+
+  // 🌟 安全兜底：如果控件数组为空或不存在，默认展示两行经典输入框，保证画布100%有内容绝不白屏！
+  const formControls: FormControlItem[] =
+    Array.isArray(cfg.formControls) && cfg.formControls.length > 0
+      ? cfg.formControls
+      : [
+        { id: '1', type: 'Text', label: '姓名', placeholder: '请输入您的完整姓名' },
+        { id: '2', type: 'Number', label: '手机号', placeholder: '请输入联系电话' },
+      ];
 
   return (
     <div
       style={{
         backgroundColor: bgColor,
-        padding: '16px',
-        borderRadius: '8px',
+        padding: '18px 16px',
+        borderRadius: '10px',
         boxSizing: 'border-box',
         width: '100%',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
       }}
     >
       {title && (
@@ -49,9 +45,10 @@ const BaseForm = memo((props: BaseFormProps) => {
           style={{
             fontSize: `${fontSize}px`,
             color: titColor,
-            fontWeight: titWeight as any,
-            marginBottom: '12px',
+            fontWeight: 600,
+            marginBottom: '14px',
             textAlign: 'center',
+            letterSpacing: '0.5px',
           }}
         >
           {title}
@@ -59,23 +56,24 @@ const BaseForm = memo((props: BaseFormProps) => {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {formControls.map((item) => (
+        {formControls.map((item, index) => (
           <div
-            key={item.id}
+            key={item.id || String(index)}
             style={{
               display: 'flex',
               alignItems: 'center',
-              borderBottom: '1px solid #f0f0f0',
+              borderBottom: '1px solid #f3f4f6',
               paddingBottom: '8px',
             }}
           >
             <label
               style={{
-                width: '70px',
+                width: '72px',
                 fontSize: '14px',
-                color: '#333',
+                color: '#374151',
                 flexShrink: 0,
                 textAlign: 'left',
+                fontWeight: 500,
               }}
             >
               {item.label}
@@ -89,7 +87,7 @@ const BaseForm = memo((props: BaseFormProps) => {
                   outline: 'none',
                   background: 'transparent',
                   fontSize: '14px',
-                  color: '#666',
+                  color: '#4b5563',
                   padding: '4px 0',
                 }}
                 defaultValue=""
@@ -113,7 +111,7 @@ const BaseForm = memo((props: BaseFormProps) => {
                   outline: 'none',
                   resize: 'none',
                   fontSize: '14px',
-                  color: '#333',
+                  color: '#1f2937',
                   fontFamily: 'inherit',
                 }}
               />
@@ -126,7 +124,7 @@ const BaseForm = memo((props: BaseFormProps) => {
                   border: 'none',
                   outline: 'none',
                   fontSize: '14px',
-                  color: '#333',
+                  color: '#1f2937',
                   background: 'transparent',
                 }}
               />
@@ -137,16 +135,17 @@ const BaseForm = memo((props: BaseFormProps) => {
         <button
           type="button"
           style={{
-            marginTop: '8px',
+            marginTop: '10px',
             width: '100%',
-            padding: '10px 0',
+            padding: '11px 0',
             backgroundColor: btnColor,
             color: btnTextColor,
             border: 'none',
-            borderRadius: '6px',
+            borderRadius: '8px',
             fontSize: '15px',
             fontWeight: 'bold',
             cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
           }}
         >
           提交
