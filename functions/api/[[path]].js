@@ -253,7 +253,7 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 保存作品 (/api/h5/save) -> AI 自动打工仔发布 H5 的同一接口！
+    // 10. 保存作品 (/api/h5/save) -> 绝对强力自愈版
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
@@ -261,15 +261,15 @@ export async function onRequest(context) {
             const userId = request.headers.get("x-user-id") || "1";
             const schemaStr = typeof schema === "string" ? schema : JSON.stringify(schema || []);
 
-            // 🌟 强行放在 INSERT 正上方：无视内存锁，保存前自动检查并补齐列，绝不再报 no column！
-            await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
-            await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1").catch(() => { });
-            await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
+            // 🌟 强行在每次保存前独立执行ALTER TABLE，绝不依赖初始化锁，确保云端 Turso 库万无一失！
+            try { await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (e) { }
+            try { await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1"); } catch (e) { }
+            try { await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''"); } catch (e) { }
 
             await db.execute({
                 sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
-              VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, 0), CURRENT_TIMESTAMP) 
-              ON CONFLICT(id) DO UPDATE SET schema_json = excluded.schema_json, title = excluded.title, cover_url = excluded.cover_url, category = excluded.category, is_published = COALESCE(?, h5_works.is_published), updated_at = CURRENT_TIMESTAMP`,
+                      VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, 0), CURRENT_TIMESTAMP) 
+                      ON CONFLICT(id) DO UPDATE SET schema_json = excluded.schema_json, title = excluded.title, cover_url = excluded.cover_url, category = excluded.category, is_published = COALESCE(?, h5_works.is_published), updated_at = CURRENT_TIMESTAMP`,
                 args: [workId || `H5_${Date.now()}`, userId, title || "未命名", schemaStr, cover_url || "", category || "h5", is_published, is_published]
             });
             return new Response(JSON.stringify({ code: 200, msg: "保存成功" }), { headers: corsHeaders });

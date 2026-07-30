@@ -51,25 +51,23 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
-  // 🌟 真正全量捕获：自动动态计算画布全部组件的总高度 (scrollHeight)，拖10个组件也能从头到尾一字不落！
-  // 🌟 1. 自动计算整个画布真实的超长高度，不管拖2个还是10个组件，从头到尾一字不漏，强锁纯白纸底！
   const captureCanvas = async (scaleMultiplier: number) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      // 严格对准真实画布节点，不抓带阴影和灰色背景的外侧壳子
+      // 🌟 精准锁定整个画布渲染节点
       const el = (document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board') || document.body) as HTMLElement;
       if (!el) return absoluteFallback;
 
-      // 🌟 核心点：对比 scrollHeight 和 clientHeight，取最大实际长图高度，彻底消灭被 600px 截断的问题！
-      const realHeight = Math.max(el.scrollHeight, el.clientHeight, 667);
+      // 🌟 动态计算全部组件的总高度，彻底杜绝下方组件被截断、只拍到一半的问题！
+      const realHeight = Math.max(el.scrollHeight, el.clientHeight, 800);
       const realWidth = Math.max(el.scrollWidth, el.clientWidth, 375);
 
       const canvas = await html2canvas(el, {
         useCORS: true,
         scale: scaleMultiplier,
         logging: false,
-        backgroundColor: '#ffffff', // 🌟 100% 强锁纯白底，杜绝灰色底色
+        backgroundColor: '#ffffff', // 强制纯白底
         allowTaint: true,
         width: realWidth,
         height: realHeight,
@@ -80,7 +78,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         scrollX: 0,
         scrollY: 0,
       });
-      const base64 = canvas.toDataURL('image/jpeg', 0.85);
+      const base64 = canvas.toDataURL('image/jpeg', 0.9);
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
