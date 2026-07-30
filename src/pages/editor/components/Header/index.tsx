@@ -51,6 +51,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
+  // 🌟 终极破局画布截图：精准计算绝对定位组件的总高度，彻底杜绝下方组件漏掉
   const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
@@ -59,8 +60,33 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       if (!targetEl) return absoluteFallback;
 
       const el = targetEl as HTMLElement;
-      const fullHeight = Math.max(el.scrollHeight, el.offsetHeight, 1000);
-      const fullWidth = Math.max(el.scrollWidth, el.offsetWidth, 375);
+
+      // 1. 深度计算：遍历画布内所有子节点的真实底部坐标，精准算出长图总高度
+      let maxBottom = 800;
+      const allElements = el.querySelectorAll('*');
+      allElements.rows || allElements.forEach?.((node: any) => {
+        if (node.offsetTop !== undefined && node.offsetHeight !== undefined) {
+          const bottom = node.offsetTop + node.offsetHeight;
+          if (bottom > maxBottom) maxBottom = bottom;
+        }
+      });
+
+      // 结合 pointData 里的组件坐标进行双重保险计算
+      if (pointData && pointData.length) {
+        pointData.forEach((item: any) => {
+          const itemBottom = (Number(item.top) || Number(item.y) || 0) + (Number(item.height) || Number(item.h) || 120);
+          if (itemBottom > maxBottom) maxBottom = itemBottom;
+        });
+      }
+
+      const renderHeight = maxBottom + 120;
+      const renderWidth = el.offsetWidth || 375;
+
+      // 2. 临时强制撑开画布 DOM 高度
+      const origHeight = el.style.height;
+      const origMinHeight = el.style.minHeight;
+      el.style.height = `${renderHeight}px`;
+      el.style.minHeight = `${renderHeight}px`;
 
       const canvas = await html2canvas(el, {
         useCORS: true,
@@ -68,13 +94,17 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         logging: false,
         backgroundColor: '#ffffff',
         allowTaint: true,
-        width: fullWidth,
-        height: fullHeight,
-        windowWidth: fullWidth,
-        windowHeight: fullHeight,
+        width: renderWidth,
+        height: renderHeight,
+        windowWidth: renderWidth,
+        windowHeight: renderHeight,
         scrollY: 0,
         scrollX: 0,
       });
+
+      // 3. 恢复画布原样
+      el.style.height = origHeight;
+      el.style.minHeight = origMinHeight;
 
       const base64 = canvas.toDataURL('image/jpeg', 0.9);
       const res = await fetch('/api/upload', {
