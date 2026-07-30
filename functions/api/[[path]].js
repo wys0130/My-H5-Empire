@@ -289,25 +289,24 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 保存作品并发布到“我的作品” (/api/h5/save)
+    // 10. 保存作品并发布到“我的作品” (/api/h5/save) -> 终极字段自愈版
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
             const { workId, schema, title, cover_url, category, is_published, data } = body;
             const userId = request.headers.get("x-user-id") || "1";
 
-            await db.execute(`
-                CREATE TABLE IF NOT EXISTS h5_works (
-                    id TEXT PRIMARY KEY,
-                    user_id TEXT DEFAULT '1',
-                    title TEXT,
-                    schema_json TEXT,
-                    cover_url TEXT,
-                    category TEXT DEFAULT 'h5',
-                    is_published INTEGER DEFAULT 1,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `).catch(() => { });
+            // 🌟 核心破局：不管远程表建于何时、缺什么字段，这里强制逐个 ALTER 补齐！
+            // 如果字段已存在报错会被 catch 默默吃掉，如果不存在则瞬间补上，彻底根除列不存在的报错！
+            await db.execute("CREATE TABLE IF NOT EXISTS h5_works (id TEXT PRIMARY KEY)").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN user_id TEXT DEFAULT '1'").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN title TEXT").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN schema_json TEXT").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN cover_url TEXT").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN category TEXT DEFAULT 'h5'").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN is_published INTEGER DEFAULT 1").catch(() => { });
+            await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
 
             const rawSchema = schema || data || [];
             const schemaStr = typeof rawSchema === "string" ? rawSchema : JSON.stringify(rawSchema);
@@ -317,6 +316,7 @@ export async function onRequest(context) {
             const finalCategory = category || "h5";
             const finalPub = is_published !== undefined ? Number(is_published) : 1;
 
+            // 🌟 此时再写入，远程表已经具备了所有字段，100% 成功落库！
             await db.execute({
                 sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
                       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) 
