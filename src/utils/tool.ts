@@ -2,7 +2,7 @@ import { RefObject, useEffect, useLayoutEffect, useState } from 'react';
 import { RGBColor } from 'react-color';
 
 // 生成uuid
-function uuid(len: number, radix: number) {
+function uuid(len: number, radix?: number) {
   let chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
   let uuid = [],
     i;
@@ -26,13 +26,13 @@ function uuid(len: number, radix: number) {
   return uuid.join('');
 }
 
-// 将rgba字符串对象转化为rgba对象
+// 将rgba字符串转化对象
 function rgba2Obj(rgba = '') {
   let reg = /rgba\((\d+),(\d+),(\d+),(\d+)\)/g;
   let rgbaObj: RGBColor = { r: 0, g: 0, b: 0, a: 0 };
 
   rgba.replace(reg, (_m, r, g, b, a) => {
-    rgbaObj = { r, g, b, a };
+    rgbaObj = { r: Number(r), g: Number(g), b: Number(b), a: Number(a) };
     return rgba;
   });
   return rgbaObj;
@@ -85,7 +85,6 @@ export function useAnimation(state: boolean, delay: number) {
 export function unParams(params = '?a=1&b=2&c=3') {
   let obj: any = {};
   params &&
-    // eslint-disable-next-line no-useless-escape
     params.replace(/((\w*)=([\.a-z0-9A-Z]*)?)?/g, (m, a, b, c): any => {
       if (b || c) obj[b] = c;
     });
@@ -105,16 +104,16 @@ export function throttle(fn: Function, delay: number) {
   };
 }
 
-export function formatTime(fmt: string, dateObj: any) {
+export function formatTime(fmt: string, dateObj?: any) {
   const date = dateObj || new Date();
   const o: any = {
-    'M+': date.getMonth() + 1, //月份
-    'd+': date.getDate(), //日
-    'h+': date.getHours(), //小时
-    'm+': date.getMinutes(), //分
-    's+': date.getSeconds(), //秒
-    'q+': Math.floor((date.getMonth() + 3) / 3), //季度
-    S: date.getMilliseconds(), //毫秒
+    'M+': date.getMonth() + 1,
+    'd+': date.getDate(),
+    'h+': date.getHours(),
+    'm+': date.getMinutes(),
+    's+': date.getSeconds(),
+    'q+': Math.floor((date.getMonth() + 3) / 3),
+    S: date.getMilliseconds(),
   };
   if (/(y+)/.test(fmt)) {
     fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
@@ -130,7 +129,6 @@ export function formatTime(fmt: string, dateObj: any) {
   return fmt;
 }
 
-// note (@livs-ops): 检测当前浏览器模式
 export function detectMobileBrowser(browserNavigatorMetaInfo: string): boolean {
   return (
     /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(
@@ -142,12 +140,11 @@ export function detectMobileBrowser(browserNavigatorMetaInfo: string): boolean {
   );
 }
 
-// note (@livs-ops): 获取浏览器元信息
 export function getBrowserNavigatorMetaInfo(): string {
-  return window.navigator.userAgent || window.navigator.vendor || window.opera;
+  return window.navigator.userAgent || window.navigator.vendor || (window as any).opera || '';
 }
 
-export const serverUrl = isDev ? 'http://192.16x.x.x:3000' : '你的服务器地址';
+export const serverUrl = isDev ? 'http://localhost:3000' : '';
 
 // 宽度适配器
 export const _gaw = (w: number) => {
