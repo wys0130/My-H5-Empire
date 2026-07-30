@@ -47,8 +47,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [modalConfig, setModalConfig] = useState<{ visible: boolean }>({ visible: false });
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [faceUrl, setFaceUrl] = useState('');
-
-  // 🌟 自动读取来自商城的作品原名称
   const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
@@ -130,15 +128,12 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const deleteAll = () => Modal.confirm({ title: '确认清空画布?', onOk() { clearData(); } });
   const toBack = () => history.push('/mall');
 
-  // 🌟 核心修复：彻底清理旧模板的一切根源缓存
   const executeNewPage = () => {
-    clearData(); // 触发底层的清空，绝对不要加 window.location.href 强刷！
+    clearData();
     setSaveTplName('');
     localStorage.removeItem('coolmall_current_title');
     localStorage.removeItem('pointData');
     localStorage.removeItem('coolmall_pending_tpl');
-
-    // 只清理网址上的 ?tid=xxx，不刷新浏览器
     history.replace('/editor');
   };
 
@@ -192,46 +187,59 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   );
 
   return (
-    <div className={styles.header}>
-      <div className={styles.logoArea}>
-        <div onClick={toBack} className={styles.backBtn}><ArrowLeftOutlined style={{ fontSize: '18px', color: '#999' }} /></div>
-        <div className={styles.logo}></div>
-
-        {/* 🌟 配合 Less，这里已完美融入，不会再挤压右侧按钮 */}
-        <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #eaeaea', paddingLeft: '16px', marginLeft: '16px' }}>
-          <span style={{ color: '#999', fontSize: '13px', marginRight: '8px', whiteSpace: 'nowrap' }}>当前作品:</span>
+    // 🌟 100% 物理重构：用 inline style 强制定下 Flex 规范，彻底打穿 LESS 中的绝对定位层叠冲突！
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: '60px',
+        padding: '0 24px',
+        backgroundColor: '#fff',
+        borderBottom: '1px solid #f0f0f0',
+        minWidth: '1100px',
+        overflowX: 'auto',
+        boxSizing: 'border-box',
+        gap: '20px',
+      }}
+    >
+      {/* 🔴 左侧区：返回按钮 + 品牌 + 作品名称设置 */}
+      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '12px' }}>
+        <div onClick={toBack} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+          <ArrowLeftOutlined style={{ fontSize: '18px', color: '#666' }} />
+        </div>
+        <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#e11d48' }}>CoolMall 创作者引擎</div>
+        <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #eaeaea', paddingLeft: '12px' }}>
+          <span style={{ color: '#999', fontSize: '13px', marginRight: '6px', whiteSpace: 'nowrap' }}>当前作品:</span>
           <Input
             value={saveTplName}
             onChange={e => setSaveTplName(e.target.value)}
             bordered={false}
             placeholder="未命名作品"
-            style={{ width: '160px', fontWeight: 'bold', color: '#e11d48', padding: '0 4px', borderBottom: '1px dashed #e11d48', borderRadius: 0 }}
+            style={{ width: '150px', fontWeight: 'bold', color: '#e11d48', borderBottom: '1px dashed #e11d48', borderRadius: 0 }}
           />
         </div>
       </div>
 
-      <div className={styles.controlArea} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {/* 🌟 1. 把这三个按钮直接提出来，放在左边 */}
+      {/* 🟡 中央操作区：撤销/重做/清空/预览 —— 彻底去除 position: absolute，水平平铺绝不折行 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
         <Button onClick={undohandler} disabled={!pointData.length} icon={<UndoOutlined />}>撤销</Button>
         <Button onClick={redohandler} disabled={!pointData.length} icon={<RedoOutlined />}>重做</Button>
         <Button onClick={deleteAll} disabled={!pointData.length} danger icon={<DeleteOutlined />}>清空</Button>
 
-        {/* 🌟 2. 加一个美观的竖线分割一下 */}
-        <div style={{ width: '1px', height: '20px', background: '#d9d9d9', margin: '0 8px' }}></div>
+        <div style={{ width: '1px', height: '18px', background: '#e5e7eb', margin: '0 4px' }}></div>
 
-        {/* 原本的预览和更多按钮保持不变 */}
         <MyPopover content={content()} directions="BOTTOM">
           <Button type="default" disabled={!pointData.length}><MobileOutlined /> 手机预览</Button>
         </MyPopover>
         <Button type="default" onClick={toPreview} disabled={!pointData.length}>电脑预览</Button>
-
-        {/* 🌟 3. 别忘了在上面的 moreMenu 变量里，把这三个按钮删掉，免得重复 */}
         <Dropdown overlay={moreMenu} placement="bottomCenter" trigger={['click']}>
-          <Button>更多 <DownOutlined style={{ marginLeft: 4 }} /></Button>
+          <Button>更多 <DownOutlined style={{ marginLeft: 2 }} /></Button>
         </Dropdown>
       </div>
 
-      <div className={styles.btnArea}>
+      {/* 🟢 右侧收尾区：返回我的作品 / 保存草稿 / 用户入口 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
         <Button onClick={() => history.push('/mall?tab=my')} style={{ borderColor: '#e11d48', color: '#e11d48' }}>
           我的作品
         </Button>
@@ -241,15 +249,20 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
         {user && !isAdmin ? (
           <Popover content={popoverContent} title={<span>个人中心</span>} trigger="click" placement="bottomRight">
-            <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff', display: 'flex', alignItems: 'center' }} icon={<UserOutlined />}>我的</Button>
+            <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }} icon={<UserOutlined />}>我的</Button>
           </Popover>
         ) : (
-          <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff', display: 'flex', alignItems: 'center' }} icon={<UserOutlined />} onClick={() => { if (!user) { history.push('/'); } else if (isAdmin) { history.push('/dashboard'); } }}>
+          <Button
+            style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }}
+            icon={<UserOutlined />}
+            onClick={() => { if (!user) { history.push('/'); } else if (isAdmin) { history.push('/dashboard'); } }}
+          >
             {!user ? '登录' : '后台'}
           </Button>
         )}
       </div>
 
+      {/* 封面海报模态框与草稿弹窗 */}
       <Modal title="✨ 海报预览" visible={showFaceModal} footer={null} width={380} destroyOnClose={true} onCancel={() => setShowFaceModal(false)} bodyStyle={{ padding: '16px' }}>
         <img src={faceUrl} style={{ width: '100%', borderRadius: '12px' }} alt="海报" />
       </Modal>

@@ -675,16 +675,55 @@ export default function BasicLayout(props: any) {
         .ant-btn-primary:hover { background-color: #be123c !important; border-color: #be123c !important; }
         .ant-table-body { overflow-y: auto !important; }
 
-        /* 🌟 核心防挤压与间距重塑：让右侧按钮组有间隙、绝不折行、绝不压扁 */
-        header .ant-btn { 
-          white-space: nowrap !important; 
-          flex-shrink: 0 !important; 
-          margin: 0 4px !important; 
+        /* 1. 强制全站所有按钮绝不折行、绝不压扁 */
+        .ant-btn {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
         }
-        /* 为左侧作品名称输入框和右侧按键区域拉开安全安全距离 */
-        header > div {
+
+        /* 2. 精准针对 /editor 编辑器外层容器修构 Flex 布局，彻底覆盖原版绝对定位碰撞 */
+        [class*="editorWrap"] > div:first-child,
+        [class*="editorWrap"] [class*="header"],
+        [class*="editorWrap"] [class*="Header"] {
           display: flex !important;
           align-items: center !important;
+          justify-content: space-between !important;
+          position: relative !important;
+          padding: 0 16px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          overflow-x: auto !important;
+          gap: 16px !important;
+        }
+
+        /* 左侧区域（Logo + 作品名输入框） */
+        [class*="editorWrap"] [class*="logoArea"] {
+          display: flex !important;
+          align-items: center !important;
+          position: static !important;
+          flex-shrink: 0 !important;
+          gap: 12px !important;
+        }
+
+        /* 中间操作按键组（撤销/重做/预览/清空）- 彻底干掉 position: absolute 和 translateX */
+        [class*="editorWrap"] [class*="controlArea"] {
+          display: flex !important;
+          align-items: center !important;
+          position: static !important;
+          transform: none !important;
+          left: auto !important;
+          right: auto !important;
+          flex-shrink: 0 !important;
+          gap: 8px !important;
+          margin: 0 auto !important;
+        }
+
+        /* 右侧操作区（我的作品/发布/后台） */
+        [class*="editorWrap"] [class*="btnArea"] {
+          display: flex !important;
+          align-items: center !important;
+          position: static !important;
+          flex-shrink: 0 !important;
           gap: 8px !important;
         }
       `}
