@@ -264,30 +264,32 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 保存作品 (/api/h5/save) -> 绝对防线：双保险降级重试机制
-    if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add") || pathname.includes("/api/sheet/save")) {
+    // 10. 保存作品 (/api/h5/save) -> 降维打击纯净版：只用绝对稳妥的核心列，彻底消灭所有 SQLITE 报错！
+    if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
             const { workId, schema, title, cover_url, category, is_published, data } = body;
-            const userId = request.headers.get("x-user-id") || "1";
 
-            // 🌟 核心清洗：确保所有复杂对象、表格数据都转为字符串，绝不让 JS 对象直接进 args！
             const rawSchema = schema || data || [];
             const schemaStr = typeof rawSchema === "string" ? rawSchema : JSON.stringify(rawSchema);
-            const finalTitle = title || "未命名云表格";
+            const finalWorkId = workId || `H5_${Date.now()}`;
+            const finalTitle = title || "未命名作品";
             const finalCover = cover_url || "";
-            const finalCategory = category || "sheet";
+            const finalCategory = category || "h5";
             const finalPub = is_published ? 1 : 0;
-            const finalWorkId = workId || `SHEET_${Date.now()}`;
 
-            // 🌟 严格保证 args 数组里全都是 string、number 或 null，绝无 object 或 undefined！
+            // 🌟 核心：彻底剥离 updated_at 与 user_id，只操作绝对存在的 6 个基础字段
             await db.execute({
-                sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
-                      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) 
-                      ON CONFLICT(id) DO UPDATE SET schema_json = excluded.schema_json, title = excluded.title, cover_url = excluded.cover_url, category = excluded.category, is_published = excluded.is_published, updated_at = CURRENT_TIMESTAMP`,
+                sql: `INSERT INTO h5_works (id, title, schema_json, cover_url, category, is_published) 
+                      VALUES (?, ?, ?, ?, ?, COALESCE(?, 0)) 
+                      ON CONFLICT(id) DO UPDATE SET 
+                        schema_json = excluded.schema_json, 
+                        title = excluded.title, 
+                        cover_url = excluded.cover_url, 
+                        category = excluded.category, 
+                        is_published = excluded.is_published`,
                 args: [
                     String(finalWorkId),
-                    Number(userId) || 1,
                     String(finalTitle),
                     String(schemaStr),
                     String(finalCover),
@@ -300,7 +302,7 @@ export async function onRequest(context) {
                 headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
             });
         } catch (e) {
-            return new Response(JSON.stringify({ code: 500, msg: "保存失败: " + e.message }), {
+            return new Response(JSON.stringify({ code: 500, msg: "保存失败: " + e.message }, null, 2), {
                 headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
             });
         }

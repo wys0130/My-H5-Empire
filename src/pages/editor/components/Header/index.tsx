@@ -51,20 +51,22 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
-  // 🌟 核心修复：截屏前临时解除高度与溢出限制，确保 3 个甚至 10 个组件全盘拍下，绝不只截第一屏！
-  const captureCanvas = async (scaleMultiplier: number = 1) => {
+  // 🌟 降维打击画布截图：临时强制撑开全高，让 html2canvas 完整拍下所有组件，绝不漏掉任何一个！
+  const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board');
+      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
       if (!targetEl) return absoluteFallback;
 
       const el = targetEl as HTMLElement;
+
+      // 1. 记录原本的样式
       const originalHeight = el.style.height;
       const originalOverflow = el.style.overflow;
       const fullHeight = el.scrollHeight;
 
-      // 临时撑满全高并允许溢出可见
+      // 2. 降维打击：临时瞬间撑开高度并取消溢出隐藏，迫使所有子组件全部参与渲染
       el.style.height = `${fullHeight}px`;
       el.style.overflow = 'visible';
 
@@ -72,13 +74,13 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         useCORS: true,
         scale: scaleMultiplier,
         logging: false,
-        backgroundColor: '#ffffff', // 强制纯白底
+        backgroundColor: '#ffffff', // 强行纯白底
         allowTaint: true,
         windowWidth: el.scrollWidth || 375,
         windowHeight: fullHeight,
       });
 
-      // 恢复DOM原样
+      // 3. 恢复 DOM 原样
       el.style.height = originalHeight;
       el.style.overflow = originalOverflow;
 
@@ -95,7 +97,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       return absoluteFallback;
     }
   };
-
+  
   // 🌟 2. 纯前端渲染截图，去掉超时卡顿的远端请求
   const autoGenerateCover = async (isSilent = false) => {
     setIsCapturing(true);
