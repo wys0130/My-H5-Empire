@@ -247,6 +247,11 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
           发布到我的作品
         </Button>
 
+        {/* 🌟 在这里加这一行：无条件常驻显示【后台管理】按钮，想进随时进，绝对不隐藏！ */}
+        <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff', fontWeight: 'bold' }} onClick={() => history.push('/dashboard')}>
+          后台管理
+        </Button>
+
         {user && !isAdmin ? (
           <Popover content={popoverContent} title={<span>个人中心</span>} trigger="click" placement="bottomRight">
             <Button style={{ backgroundColor: '#111827', borderColor: '#111827', color: '#fff' }} icon={<UserOutlined />}>我的</Button>

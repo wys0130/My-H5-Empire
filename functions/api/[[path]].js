@@ -76,6 +76,10 @@ export async function onRequest(context) {
         await db.batch(batchSQLs, "write").catch((err) => {
             console.error("Turso 批量初始化警告:", err);
         });
+        // 🌟 加上这3行：如果云数据库里的表是老表缺少字段，自动静默补齐字段，绝不再报 no column 错误！
+        await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1").catch(() => { });
+        await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
+        await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
     }
 
     const db = getDb();
