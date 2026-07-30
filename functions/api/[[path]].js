@@ -46,29 +46,15 @@ export async function onRequest(context) {
         const batchSQLs = [
             "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', vip_expire DATETIME DEFAULT NULL, failed_attempts INTEGER DEFAULT 0, parent_agent_id INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS otp_records (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, code TEXT, expires_at INTEGER, is_used BOOLEAN DEFAULT 0)",
-            "CREATE TABLE IF NOT EXISTS h5_works (id TEXT PRIMARY KEY, user_id INTEGER, title TEXT DEFAULT '未命名', schema_json TEXT, cover_url TEXT, category TEXT DEFAULT 'h5', is_published INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS h5_works (id TEXT PRIMARY KEY, user_id INTEGER DEFAULT 1, title TEXT DEFAULT '未命名', subTitle TEXT DEFAULT '', schema_json TEXT, cover_url TEXT, category TEXT DEFAULT 'h5', is_published INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS financial_records (id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT UNIQUE, user_email TEXT, amount REAL, agent_id INTEGER DEFAULT 0, status TEXT DEFAULT 'success', remark TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS system_components (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, icon TEXT, category TEXT, status INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 1)",
             "CREATE TABLE IF NOT EXISTS operation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, admin_id TEXT, action TEXT, target_id TEXT, backup_data TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS system_settings (key TEXT UNIQUE, value TEXT)",
-            // 👑 自动往 Turso 中写入管理员与设计师初始账号，真正修复“用户管理为空”！
             `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin@coolmall.com', '${adminPwd}', 'admin')`,
             `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (2, 'designer@coolmall.com', '${userPwd}', 'user')`,
-            // 🚀 一条 SQL 批量插入 26 个完整中文标准组件，修复“组件管理为空”
-            `INSERT OR IGNORE INTO system_components (id, name, icon, category, status, sort_order) VALUES 
-        (1, '表单定制组件', '📝', '基础组件', 1, 1), (2, '单行文本', '📄', '基础组件', 1, 2), (3, '文本组件', '📄', '基础组件', 1, 3),
-        (4, '空白组件', '⬜', '基础组件', 1, 4), (5, '富文本组件', '📰', '基础组件', 1, 5), (6, '图标组件', '💠', '基础组件', 1, 6),
-        (7, '二维码组件', '🔲', '基础组件', 1, 7), (8, '表格组件', '📊', '基础组件', 1, 8), (9, '轮播图组件', '🖼️', '基础组件', 1, 9),
-        (10, '页头组件', '🔝', '基础组件', 1, 10), (11, '列表组件', '📑', '基础组件', 1, 11), (12, '通知组件', '📢', '基础组件', 1, 12),
-        (13, '视频组件', '▶️', '媒体组件', 1, 13), (14, '音频组件', '🎵', '媒体组件', 1, 14), (15, '图片组件', '📸', '媒体组件', 1, 15),
-        (16, '地图组件', '🗺️', '媒体组件', 1, 16), (17, '日历组件', '📅', '媒体组件', 1, 17), (18, '柱状图组件', '📊', '可视化组件', 1, 18),
-        (19, '折线图组件', '📈', '可视化组件', 1, 19), (20, '饼图组件', '🥧', '可视化组件', 1, 20), (21, '面积图组件', '📉', '可视化组件', 1, 21),
-        (22, '进度条组件', '🔋', '可视化组件', 1, 22), (23, '专栏组件', '💎', '营销组件', 1, 23), (24, '切换页组件', '🔄', '营销组件', 1, 24),
-        (25, '优惠券组件', '🎟️', '营销组件', 1, 25), (26, '商品标签', '🏷️', '营销组件', 1, 26)`,
-            // 🚀 初始化默认主页轮播图与公告
             `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('carousel', '[{"id":1,"title":"酷猫商业中枢","desc":"海量高质量 H5 落地页，全网一键分发","image_url":""},{"id":2,"title":"极速生产力引擎","desc":"无需代码，让创意瞬间落地商业化","image_url":""}]')`,
             `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('announcement', '🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线，快来开启您的创意创作吧！')`,
-            // 🧠 初始化 AI CEO 实时心流与待办技能树，修复“线上后台没有 AI 效果”
             `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_thoughts', '[{"id":"101","time":"10:30:15","title":"白天常规巡检","content":"正在监控平台流水、流量热力图及各模块流畅度...","type":"info"},{"id":"102","time":"02:15:00","title":"夜间深度自检","content":"Boss 已离线，神经网络开始全网矩阵搜索与商业复盘...","type":"thought"}]')`,
             `INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_proposals', '[{"id":"skill_auto_seo","title":"自动化双语 SEO 洗稿中枢","desc":"夜间侦测发现海外 Pinterest 对插画类模板流量扶持极大。已编写自动抓取、双语翻译并静默发帖的脚本原型。","status":"pending","type":"marketing"},{"id":"skill_webgl_3d","title":"WebGL 3D 旋转组件注入","desc":"竞品分析显示 3D 组件转化率溢价 20%。已抓取 Three.js 开源代码并封装，请求合入底层组件库。","status":"pending","type":"tech"}]')`
         ];
@@ -76,11 +62,18 @@ export async function onRequest(context) {
         await db.batch(batchSQLs, "write").catch((err) => {
             console.error("Turso 批量初始化警告:", err);
         });
-        // 🌟 加上这3行：如果云数据库里的表是老表缺少字段，自动静默补齐字段，绝不再报 no column 错误！
-        await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1").catch(() => { });
-        await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
-        await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
     }
+
+    const db = getDb();
+    if (!isDbInitialized) {
+        await ensureTablesBatch(db);
+        isDbInitialized = true;
+    }
+
+    // 🌟 核心自愈：每次请求独立静默检测并补齐字段，彻底消灭 updated_at / user_id 找不到列的 SQLite 报错！
+    await db.execute("ALTER TABLE h5_works ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP").catch(() => { });
+    await db.execute("ALTER TABLE h5_works ADD COLUMN user_id INTEGER DEFAULT 1").catch(() => { });
+    await db.execute("ALTER TABLE h5_works ADD COLUMN subTitle TEXT DEFAULT ''").catch(() => { });
 
     const db = getDb();
     if (!isDbInitialized) {
@@ -308,9 +301,20 @@ export async function onRequest(context) {
         }
     }
 
-    // 12. 图片上传 (/api/upload)
+    // 12. 图片上传 (/api/upload) -> 兼容 JSON 截图数据与 FormData 上传，封面不再变 LOGO！
     if (pathname.includes("/api/upload")) {
         try {
+            const contentType = request.headers.get("content-type") || "";
+
+            // 🌟 优先读取前端生成的 JSON Base64 截图，保证真实海报封面能正确存回
+            if (contentType.includes("application/json")) {
+                const body = await request.json();
+                if (body && (body.image || body.url)) {
+                    return new Response(JSON.stringify({ code: 200, url: body.image || body.url }), { headers: corsHeaders });
+                }
+            }
+
+            // 🌟 兼容文件类型的 FormData 上传
             const formData = await request.formData();
             const file = formData.get("file") || formData.get("upfile") || formData.get("image");
             if (file && typeof file === "object") {
