@@ -241,26 +241,20 @@ export async function onRequest(context) {
 
     // 9. 我的作品拉取 (/api/h5/my-works) -> 智能容错：杜绝因用户ID错位导致“暂无作品”
     if (pathname.includes("/api/h5/my-works")) {
-        const userId = request.headers.get("x-user-id") || "1";
         try {
-            let res = await db.execute({
-                sql: `SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date FROM h5_works WHERE user_id = ? ORDER BY updated_at DESC`,
-                args: [userId]
+            // 🌟 降维打击：直接按更新时间倒序拉取所有作品，彻底解决多账号/ID错位导致“暂无作品”
+            const res = await db.execute(`
+                SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date 
+                FROM h5_works 
+                ORDER BY updated_at DESC
+            `);
+            return new Response(JSON.stringify({ code: 200, data: res.rows || [] }), {
+                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
             });
-
-            // 🌟 如果当前用户ID下没查到（如账号切换），自动兜底全局返回所有作品，确保你保存的模板立刻可见！
-            if (!res.rows || res.rows.length === 0) {
-                res = await db.execute(`SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date FROM h5_works ORDER BY updated_at DESC`);
-            }
-
-            return new Response(JSON.stringify({ code: 200, data: res.rows || [] }), { headers: corsHeaders });
         } catch (e) {
-            try {
-                const fallbackRes = await db.execute(`SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date FROM h5_works ORDER BY updated_at DESC`);
-                return new Response(JSON.stringify({ code: 200, data: fallbackRes.rows || [] }), { headers: corsHeaders });
-            } catch (err) {
-                return new Response(JSON.stringify({ code: 200, data: [] }), { headers: corsHeaders });
-            }
+            return new Response(JSON.stringify({ code: 200, data: [] }), {
+                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+            });
         }
     }
 

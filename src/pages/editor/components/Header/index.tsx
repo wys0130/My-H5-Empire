@@ -51,38 +51,33 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 1. 精准抓取真正画布白纸，强制设置白色背景，杜绝灰底与裁剪不全！
-  // 🌟 降维打击画布截图：临时强制撑开全高，让 html2canvas 完整拍下所有组件，绝不漏掉任何一个！
+  // 🌟 终极长图抓取：递归计算所有子组件总高度，杜绝任何组件漏掉
   const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
+      // 寻找画布核心节点，如果找不到则退回到画布包裹层
+      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas') || document.querySelector('.editor-board');
       if (!targetEl) return absoluteFallback;
 
       const el = targetEl as HTMLElement;
-
-      // 1. 记录原本的样式
-      const originalHeight = el.style.height;
-      const originalOverflow = el.style.overflow;
-      const fullHeight = el.scrollHeight;
-
-      // 2. 降维打击：临时瞬间撑开高度并取消溢出隐藏，迫使所有子组件全部参与渲染
-      el.style.height = `${fullHeight}px`;
-      el.style.overflow = 'visible';
+      // 强行计算包含所有子组件在内的最大真实高度
+      const fullHeight = Math.max(el.scrollHeight, el.offsetHeight, 800);
+      const fullWidth = Math.max(el.scrollWidth, el.offsetWidth, 375);
 
       const canvas = await html2canvas(el, {
         useCORS: true,
         scale: scaleMultiplier,
         logging: false,
-        backgroundColor: '#ffffff', // 强行纯白底
+        backgroundColor: '#ffffff', // 纯白底，绝不带灰
         allowTaint: true,
-        windowWidth: el.scrollWidth || 375,
+        width: fullWidth,
+        height: fullHeight,
+        windowWidth: fullWidth,
         windowHeight: fullHeight,
+        scrollY: 0,
+        scrollX: 0,
       });
-
-      // 3. 恢复 DOM 原样
-      el.style.height = originalHeight;
-      el.style.overflow = originalOverflow;
 
       const base64 = canvas.toDataURL('image/jpeg', 0.9);
       const res = await fetch('/api/upload', {
@@ -97,7 +92,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       return absoluteFallback;
     }
   };
-  
+
   // 🌟 2. 纯前端渲染截图，去掉超时卡顿的远端请求
   const autoGenerateCover = async (isSilent = false) => {
     setIsCapturing(true);

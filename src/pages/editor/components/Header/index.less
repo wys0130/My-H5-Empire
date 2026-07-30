@@ -78,3 +78,31 @@
     transform: none !important;
   }
 }
+
+/* 🌟 降维打击：彻底解决右侧表单控件、减号、编辑笔重叠问题 */
+.ant-form-item,
+[class*="formItem"],
+[class*="controlItem"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+/* 保证左侧拖拽/删除按钮区有独立防线 */
+[class*="leftAction"],
+[class*="dragArea"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* 保证右侧输入框与编辑图标自适应撑开，绝不挤压重叠 */
+[class*="rightAction"],
+[class*="inputArea"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
