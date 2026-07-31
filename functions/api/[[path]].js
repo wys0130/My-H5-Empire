@@ -290,7 +290,7 @@ export async function onRequest(context) {
                 workName: item.title,
                 name: item.title,
                 status: item.is_published === 1 ? '已上架' : '待审核',
-                cover_url: '/logo.png',   // 固定本地占位，永远不传大图
+                cover_url: '',   // ⭐ 改成空字符串，让前端自行决定占位图
                 schema: [],
                 json_data: []
             }));

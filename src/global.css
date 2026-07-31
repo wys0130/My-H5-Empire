@@ -200,17 +200,14 @@ img {
 @import '~codemirror/theme/material.css';
 
 /* ==========================================================================
-   🔧 终极修复：取色器交互释放 + 滚轮自由 + 表单横排对齐（无重复）
+   🔧 终极修复（唯一版本，无重复）
    ========================================================================== */
-
-/* 1. 解锁 body 滚动锁（覆盖 AntD 内联样式） */
 html,
 body,
 #root {
   overflow: auto !important;
 }
 
-/* 2. 取色器仅提升层级，不加 position 污染 */
 .ant-popover,
 .ant-color-picker-palette,
 .sketch-picker,
@@ -225,7 +222,6 @@ body,
   pointer-events: auto !important;
 }
 
-/* 3. 左侧表单标签不换行、不被挤压 */
 .ant-form-item-label,
 .ant-form-item-label>label {
   white-space: nowrap !important;
@@ -234,7 +230,6 @@ body,
   width: auto !important;
 }
 
-/* 4. 动态列表行：减号- | 标签 | 输入框 一字排开 */
 .ant-form-item-control-input-content .ant-row,
 .ant-form-item-control-input-content [class*="listItem"],
 .ant-form-item-control-input-content [class*="formItemRow"] {
