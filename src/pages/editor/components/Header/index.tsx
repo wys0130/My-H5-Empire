@@ -407,13 +407,35 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
           </div>
           <div>
             <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>封面预览：</div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px 0' }}>
               <Spin spinning={isCapturing} tip="生成中...">
                 {faceUrl ? (
-                  /* 🌟 核心：直接使用新版类名，呈现商城大盘级“聚焦顶部、封面铺满”效果 */
-                  <img src={faceUrl} className="coolmall-cover-preview-img" alt="封面预览" />
+                  /* 🌟 核心：外层固定 160x284px 手机比例，内部图片 cover + 居顶，永远不膨胀！ */
+                  <div style={{
+                    width: '160px',
+                    height: '284px',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                    backgroundColor: '#f9fafb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <img
+                      src={faceUrl}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'top center'
+                      }}
+                      alt="封面预览"
+                    />
+                  </div>
                 ) : (
-                  <div style={{ width: '100%', height: '240px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+                  <div style={{ width: '160px', height: '284px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
                     封面生成中...
                   </div>
                 )}

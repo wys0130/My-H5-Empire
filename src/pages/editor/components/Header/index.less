@@ -79,78 +79,75 @@
   }
 }
 
-/* 🌟 1. 精准修复右侧属性栏表单控件：减号、文字标签、输入框、编辑笔排版重叠问题 */
+/* 🌟 1. 彻底解决取色器无法点选、以及弹窗/取色器打开时鼠标滚轮锁死失效的问题 */
+:global {
+  body {
+    overflow: auto !important;
+    padding-right: 0 !important;
+  }
+
+  .ant-popover,
+  .ant-color-picker-palette,
+  .sketch-picker,
+  [class*="colorPicker"],
+  [class*="ColorPicker"] {
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+  }
+}
+
+/* 🌟 2. 根治右侧表单属性项：图标、电话/纯文本标签名、输入框相互挤压重叠的问题 */
 :global {
 
-  /* 容器改为从左到右依次排列，间距锁定为 8px，杜绝两端强扯挤压 */
   .ant-form-item-control-input-content>div,
   [class*="formItem"],
   [class*="controlItem"],
   [class*="FormItem"],
-  [class*="listItem"] {
+  [class*="listItem"],
+  [class*="fieldRow"] {
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
     width: 100% !important;
     gap: 8px !important;
     box-sizing: border-box !important;
+    margin-bottom: 8px !important;
   }
 
-  /* ① 左侧减号 / 删除圆圈图标：固定不被压缩 */
+  /* ① 左侧减号/图标固定占位 */
   .anticon-minus-circle,
   .anticon-delete,
-  [class*="removeBtn"],
-  [class*="deleteIcon"] {
-    flex-shrink: 0 !important;
-    margin-right: 4px !important;
+  .anticon-drag,
+  [class*="removeBtn"] {
+    flex: 0 0 16px !important;
+    width: 16px !important;
     font-size: 16px !important;
     cursor: pointer;
   }
 
-  /* ② 标签名字文字（如：电话、纯文本）：给足固定宽度，绝不换行不重叠 */
+  /* ② 文字标签名（如：姓名、电话）：固定最小安全宽度，绝不重叠输入框 */
   [class*="label"],
   [class*="name"],
   span:not([class]) {
     flex-shrink: 0 !important;
-    min-width: 52px !important;
+    min-width: 54px !important;
     max-width: 80px !important;
+    white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    white-space: nowrap !important;
     font-size: 13px !important;
     color: #333 !important;
   }
 
-  /* ③ 输入框区域：自动占据剩下的所有空位 */
+  /* ③ 输入框容器：自适应撑完余下宽度 */
   .ant-input,
   .ant-input-wrapper,
-  [class*="inputArea"] {
-    flex: 1 !important;
-    min-width: 0 !important;
+  [class*="inputArea"],
+  input {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 60px !important;
     margin: 0 !important;
-  }
-
-  /* ④ 右侧的编辑小笔头图标 */
-  .anticon-edit,
-  [class*="editIcon"],
-  [class*="rightAction"] {
-    flex-shrink: 0 !important;
-    margin-left: 4px !important;
-    cursor: pointer;
-  }
-}
-
-/* 🌟 2. 改造弹窗封面预览图样式：保持卡片比例顶部聚焦铺满，摆脱“细长面条”和白边 */
-:global {
-  .coolmall-cover-preview-img {
-    width: 100% !important;
-    height: 240px !important;
-    object-fit: cover !important;
-    object-position: top center !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid #ebebeb !important;
-    display: block !important;
-    margin: 0 auto !important;
   }
 }
