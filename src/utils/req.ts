@@ -3,19 +3,15 @@ import { message } from 'antd';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// 🌟 全覆盖冷启动快照：涵盖首页、我的作品、后台所有审查与日志接口，0ms 瞬间出图！
+// 🌟 全站冷启动数据池：商城、我的作品、后台所有审查数据，完全不让屏幕白等 1 秒！
 const COLD_START_SNAPSHOTS: Record<string, any> = {
   '/api/templates/list': [],
   '/api/h5/my-works': [],
   '/api/works': [],
-  '/api/admin/works': [],
   '/all-works': [],
   '/operation-logs': [],
   '/overview': [],
-  '/sales-ranking': [],
   '/thoughts': [],
-  '/work/list': [],
-  '/h5/list': [],
   '/api/settings/carousel': [
     { id: 1, title: '酷猫商业中枢', desc: '海量高质量 H5 落地页，全网一键分发', image_url: '' },
     { id: 2, title: '极速生产力引擎', desc: '无需代码，让创意瞬间落地商业化', image_url: '' }
@@ -23,14 +19,18 @@ const COLD_START_SNAPSHOTS: Record<string, any> = {
   '/api/settings/announcement': '🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线，快来开启您的创意创作吧！'
 };
 
-// 🌟 1. 原生 fetch 0ms 拦截与静默同步
+const isTargetUrl = (url: string) => {
+  if (!url) return false;
+  return url.includes('/api/') || url.includes('works') || url.includes('list') || url.includes('logs') || url.includes('audit') || url.includes('overview');
+};
+
 if (typeof window !== 'undefined' && window.fetch) {
   const originalFetch = window.fetch;
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
     const urlStr = typeof input === 'string' ? input : input.toString();
     const isGet = !init || !init.method || init.method.toUpperCase() === 'GET';
 
-    if (isGet && (urlStr.includes('/api/') || urlStr.includes('/work') || urlStr.includes('/h5') || urlStr.includes('/all-works') || urlStr.includes('/operation-logs') || urlStr.includes('/overview'))) {
+    if (isGet && isTargetUrl(urlStr)) {
       const cacheKey = `SWR_CACHE_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey);
 
@@ -67,11 +67,10 @@ if (typeof window !== 'undefined' && window.fetch) {
 
 const instance = axios.create({
   baseURL: isDev ? 'http://localhost:3000' : '',
-  timeout: 15000,
+  timeout: 20000,
   withCredentials: true,
 });
 
-// 🌟 2. Axios 0ms 拦截：杜绝后台审核界面 11 秒卡顿
 instance.interceptors.request.use(
   async function (config) {
     config.headers = {
@@ -82,7 +81,7 @@ instance.interceptors.request.use(
     const isGet = !config.method || config.method.toUpperCase() === 'GET';
     const urlStr = config.url || '';
 
-    if (isGet && (urlStr.includes('/api/') || urlStr.includes('/work') || urlStr.includes('/h5') || urlStr.includes('/all-works') || urlStr.includes('/operation-logs') || urlStr.includes('/overview'))) {
+    if (isGet && isTargetUrl(urlStr)) {
       const cacheKey = `SWR_CACHE_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey);
 

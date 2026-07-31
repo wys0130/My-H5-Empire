@@ -200,10 +200,10 @@ img {
 @import '~codemirror/theme/material.css';
 
 /* ==========================================================================
-   🌟 终极通杀修复：表单重叠 / 取色器锁死 / 滚轮失效 (已清理全部重复规则)
+   🌟 终极降维优化：取色器正常归位交互 & 表单排版互不重叠
    ========================================================================== */
 
-/* 1. 强制穿透所有第三方颜色选择器（涵盖页头/长文本组件的各种 ColorPicker 容器） */
+/* 1. 绝不准额外加 position: absolute! 让 SketchPicker/PopPalette 自行推算定位，仅仅提高层级 */
 .ant-popover,
 .ant-color-picker-palette,
 .sketch-picker,
@@ -216,16 +216,17 @@ img {
 [class*="sketch"] {
   z-index: 99999999 !important;
   pointer-events: auto !important;
-  position: absolute !important;
 }
 
-/* 2. 移除阻挡取色器操作的透明事件捕获遮罩 */
+/* 2. 彻底销毁任何在取色器弹出时阻止点击和滑动页面的底层透明遮罩 */
 div[class*="cover"][style*="fixed"],
-div[class*="mask"][style*="transparent"] {
+div[class*="mask"][style*="transparent"],
+div[class*="ColorPicker"]>div:first-child {
+  display: none !important;
   pointer-events: none !important;
 }
 
-/* 3. 保护左侧表单标签名：绝对不准被挤变窄、绝不竖排折行！ */
+/* 3. 右侧表单属性边栏排版：保护标签文字，杜绝与输入框、减号互相挤压重叠 */
 .ant-form-item-label,
 .ant-form-item-label>label {
   white-space: nowrap !important;
@@ -234,7 +235,6 @@ div[class*="mask"][style*="transparent"] {
   width: auto !important;
 }
 
-/* 4. 精准修复动态表单列表行（减号 - | 选项名 | 输入框）：横向排开，互不打架 */
 .ant-form-item-control-input-content .ant-row,
 .ant-form-item-control-input-content [class*="listItem"],
 .ant-form-item-control-input-content [class*="formItemRow"] {
@@ -248,7 +248,6 @@ div[class*="mask"][style*="transparent"] {
   margin-bottom: 8px !important;
 }
 
-/* 减号/圆圈删除键：固定 16px，不用和名字撞在一起 */
 .anticon-minus-circle,
 .anticon-delete,
 [class*="removeBtn"] {
@@ -259,7 +258,6 @@ div[class*="mask"][style*="transparent"] {
   cursor: pointer;
 }
 
-/* 行内小文字标签（例如：姓名、电话）：给定最小安全保护宽度 */
 .ant-form-item-control-input-content span:not([class]),
 .ant-form-item-control-input-content [class*="label"] {
   flex: 0 0 50px !important;
@@ -270,7 +268,6 @@ div[class*="mask"][style*="transparent"] {
   font-size: 13px !important;
 }
 
-/* 右侧输入框/多选框：撑满余下宽度 */
 .ant-form-item-control-input-content .ant-input,
 .ant-form-item-control-input-content .ant-input-wrapper,
 .ant-form-item-control-input-content .ant-select {

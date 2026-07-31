@@ -87,25 +87,26 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 终极工业级画布截图：解决跨域图片空白、下方组件被截断、字体与排版差异问题
-  // 🌟 降维极客截图：在克隆 DOM 层彻底解除 overflow 截断，100% 抓取整个画布从上到下所有组件！
+  // 🌟 降维打击 · Off-screen Rendering Pattern（离屏沙盒模式）：
+  // 彻底脱离编辑器滚动视口约束，在 -9999px 独立渲染全长真实 DOM，从顶到底 100% 抓取，下方组件一毫秒都不漏！
   const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
-      if (!targetEl) return absoluteFallback;
+      const originalEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
+      if (!originalEl) return absoluteFallback;
 
-      const el = targetEl as HTMLElement;
+      const sourceEl = originalEl as HTMLElement;
       await document.fonts.ready;
 
-      // 精确算清画布里底端最深组件的绝对 Y 坐标
-      let maxBottom = el.scrollHeight || 600;
-      const canvasTop = el.getBoundingClientRect().top;
+      // 1. 计算真正包含所有底端组件的绝对极限高度
+      let maxBottom = sourceEl.scrollHeight || 600;
+      const canvasTop = sourceEl.getBoundingClientRect().top;
 
-      el.querySelectorAll('*').forEach((node: any) => {
+      sourceEl.querySelectorAll('*').forEach((node: any) => {
         if (node.getBoundingClientRect) {
           const rect = node.getBoundingClientRect();
-          const bottomDistance = (rect.bottom - canvasTop) + el.scrollTop;
+          const bottomDistance = (rect.bottom - canvasTop) + sourceEl.scrollTop;
           if (bottomDistance > maxBottom) maxBottom = bottomDistance;
         }
       });
@@ -117,42 +118,57 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         });
       }
 
-      // 给底部加上缓冲，绝不裁减底下组件
-      const renderHeight = Math.max(el.scrollHeight, Math.min(maxBottom + 50, 5000));
-      const renderWidth = el.offsetWidth || 375;
+      // 给底端追加 60px 缓冲区，保证下方的任何图标(小车等)都在画框之内
+      const fullRenderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
+      const renderWidth = sourceEl.offsetWidth || 375;
 
-      const origHeight = el.style.height;
-      const origMinHeight = el.style.minHeight;
-      el.style.height = `${renderHeight}px`;
-      el.style.minHeight = `${renderHeight}px`;
+      // 🌟 2. 构建独立离屏沙盒（Off-screen Sandbox Container），彻底摆脱 viewport 与 overflow 约束！
+      const sandbox = document.createElement('div');
+      sandbox.id = 'coolmall-offscreen-sandbox';
+      sandbox.style.cssText = `
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        width: ${renderWidth}px;
+        height: ${fullRenderHeight}px;
+        overflow: visible;
+        z-index: -9999;
+        background: #ffffff;
+      `;
 
-      const canvas = await html2canvas(el, {
+      // 深拷贝画布 DOM 树进沙盒
+      const cloneEl = sourceEl.cloneNode(true) as HTMLElement;
+      cloneEl.style.cssText = `
+        width: ${renderWidth}px !important;
+        height: ${fullRenderHeight}px !important;
+        min-height: ${fullRenderHeight}px !important;
+        max-height: none !important;
+        overflow: visible !important;
+        position: relative !important;
+        transform: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      `;
+      sandbox.appendChild(cloneEl);
+      document.body.appendChild(sandbox);
+
+      // 🌟 3. 对着不受限制的离屏完整节点直接拍照
+      const canvas = await html2canvas(cloneEl, {
         useCORS: true,
         allowTaint: false,
         scale: scaleMultiplier,
         logging: false,
         backgroundColor: '#ffffff',
         width: renderWidth,
-        height: renderHeight,
+        height: fullRenderHeight,
         windowWidth: renderWidth,
-        windowHeight: renderHeight,
+        windowHeight: fullRenderHeight,
         scrollY: 0,
         scrollX: 0,
-        // 🌟 核心杀招：在克隆出来的 DOM 树里，把画布容器高度撑开、去除隐藏，所有下方组件直接现形！
-        onclone: (async (clonedDoc: Document) => {
-          const clonedEl = clonedDoc.getElementById('js_canvas') || clonedDoc.querySelector('.canvas');
-          if (!clonedEl) return;
-          const clonedHtml = clonedEl as HTMLElement;
-          clonedHtml.style.transition = 'none';
-          clonedHtml.style.animation = 'none';
-          clonedHtml.style.overflow = 'visible';
-          clonedHtml.style.height = `${renderHeight}px`;
-          clonedHtml.style.maxHeight = 'none';
-        }) as any
       });
 
-      el.style.height = origHeight;
-      el.style.minHeight = origMinHeight;
+      // 🌟 4. 拍完即焚，内存零残留
+      document.body.removeChild(sandbox);
 
       const base64 = canvas.toDataURL('image/jpeg', 0.9);
       const res = await fetch('/api/upload', {
@@ -164,6 +180,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       return res.code === 200 ? (res.url || res.data?.url) : absoluteFallback;
     } catch (e) {
       console.error("Cover capture error:", e);
+      // 出现异常也必须确保清理沙盒
+      const existingSandbox = document.getElementById('coolmall-offscreen-sandbox');
+      if (existingSandbox) document.body.removeChild(existingSandbox);
       return absoluteFallback;
     }
   };
