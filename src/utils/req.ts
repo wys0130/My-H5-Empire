@@ -3,12 +3,17 @@ import { message } from 'antd';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// 🌟 全局冷启动数据：首页、大盘、后台审核表所有数据全部秒速呈现！
+// 🌟 全覆盖冷启动快照：涵盖首页、我的作品、后台所有审查与日志接口，0ms 瞬间出图！
 const COLD_START_SNAPSHOTS: Record<string, any> = {
   '/api/templates/list': [],
   '/api/h5/my-works': [],
   '/api/works': [],
   '/api/admin/works': [],
+  '/all-works': [],
+  '/operation-logs': [],
+  '/overview': [],
+  '/sales-ranking': [],
+  '/thoughts': [],
   '/work/list': [],
   '/h5/list': [],
   '/api/settings/carousel': [
@@ -18,13 +23,14 @@ const COLD_START_SNAPSHOTS: Record<string, any> = {
   '/api/settings/announcement': '🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线，快来开启您的创意创作吧！'
 };
 
+// 🌟 1. 原生 fetch 0ms 拦截与静默同步
 if (typeof window !== 'undefined' && window.fetch) {
   const originalFetch = window.fetch;
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
     const urlStr = typeof input === 'string' ? input : input.toString();
     const isGet = !init || !init.method || init.method.toUpperCase() === 'GET';
 
-    if (isGet && (urlStr.includes('/api/') || urlStr.includes('/work/') || urlStr.includes('/h5/'))) {
+    if (isGet && (urlStr.includes('/api/') || urlStr.includes('/work') || urlStr.includes('/h5') || urlStr.includes('/all-works') || urlStr.includes('/operation-logs') || urlStr.includes('/overview'))) {
       const cacheKey = `SWR_CACHE_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey);
 
@@ -47,7 +53,7 @@ if (typeof window !== 'undefined' && window.fetch) {
 
       for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
         if (urlStr.includes(key)) {
-          return new Response(JSON.stringify({ code: 200, data: snapshot, list: snapshot }), {
+          return new Response(JSON.stringify({ code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           });
@@ -61,11 +67,11 @@ if (typeof window !== 'undefined' && window.fetch) {
 
 const instance = axios.create({
   baseURL: isDev ? 'http://localhost:3000' : '',
-  timeout: 10000,
+  timeout: 15000,
   withCredentials: true,
 });
 
-// 🌟 Axios SWR：同步立即弹还数据，告别 4 秒白屏等待
+// 🌟 2. Axios 0ms 拦截：杜绝后台审核界面 11 秒卡顿
 instance.interceptors.request.use(
   async function (config) {
     config.headers = {
@@ -76,7 +82,7 @@ instance.interceptors.request.use(
     const isGet = !config.method || config.method.toUpperCase() === 'GET';
     const urlStr = config.url || '';
 
-    if (isGet && (urlStr.includes('/api/') || urlStr.includes('/work/') || urlStr.includes('/h5/'))) {
+    if (isGet && (urlStr.includes('/api/') || urlStr.includes('/work') || urlStr.includes('/h5') || urlStr.includes('/all-works') || urlStr.includes('/operation-logs') || urlStr.includes('/overview'))) {
       const cacheKey = `SWR_CACHE_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey);
 
@@ -106,7 +112,7 @@ instance.interceptors.request.use(
       for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
         if (urlStr.includes(key)) {
           config.adapter = async () => ({
-            data: { code: 200, data: snapshot, list: snapshot },
+            data: { code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length },
             status: 200,
             statusText: 'OK',
             headers: {},

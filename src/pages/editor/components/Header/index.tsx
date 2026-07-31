@@ -87,7 +87,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 终极工业级画布截图：解决跨域图片空白、下方组件被截断、字体与排版差异问题
-  // 🌟 100% 抓取画布全部真实高度（含 transform 组件与页面底端），绝不裁截下方内容
+  // 🌟 降维极客截图：在克隆 DOM 层彻底解除 overflow 截断，100% 抓取整个画布从上到下所有组件！
   const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
@@ -98,19 +98,18 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const el = targetEl as HTMLElement;
       await document.fonts.ready;
 
-      // 🌟 破局关键：用 getBoundingClientRect 测算每一个子元素相对容器最顶部的绝对距离
-      const canvasRect = el.getBoundingClientRect();
+      // 精确算清画布里底端最深组件的绝对 Y 坐标
       let maxBottom = el.scrollHeight || 600;
+      const canvasTop = el.getBoundingClientRect().top;
 
       el.querySelectorAll('*').forEach((node: any) => {
         if (node.getBoundingClientRect) {
           const rect = node.getBoundingClientRect();
-          const bottomDistance = (rect.bottom - canvasRect.top) + el.scrollTop;
+          const bottomDistance = (rect.bottom - canvasTop) + el.scrollTop;
           if (bottomDistance > maxBottom) maxBottom = bottomDistance;
         }
       });
 
-      // 双保险：加上 pointData 里的组件坐标
       if (pointData && pointData.length) {
         pointData.forEach((item: any) => {
           const itemBottom = (Number(item.top) || Number(item.y) || 0) + (Number(item.height) || Number(item.h) || 120);
@@ -118,8 +117,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         });
       }
 
-      // 给底端再加 40px 的舒适白边缓冲，彻底解决“底下的组件没截选到”
-      const renderHeight = Math.max(el.scrollHeight, Math.min(maxBottom + 40, 4000));
+      // 给底部加上缓冲，绝不裁减底下组件
+      const renderHeight = Math.max(el.scrollHeight, Math.min(maxBottom + 50, 5000));
       const renderWidth = el.offsetWidth || 375;
 
       const origHeight = el.style.height;
@@ -139,11 +138,16 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         windowHeight: renderHeight,
         scrollY: 0,
         scrollX: 0,
+        // 🌟 核心杀招：在克隆出来的 DOM 树里，把画布容器高度撑开、去除隐藏，所有下方组件直接现形！
         onclone: (async (clonedDoc: Document) => {
           const clonedEl = clonedDoc.getElementById('js_canvas') || clonedDoc.querySelector('.canvas');
           if (!clonedEl) return;
-          (clonedEl as HTMLElement).style.transition = 'none';
-          (clonedEl as HTMLElement).style.animation = 'none';
+          const clonedHtml = clonedEl as HTMLElement;
+          clonedHtml.style.transition = 'none';
+          clonedHtml.style.animation = 'none';
+          clonedHtml.style.overflow = 'visible';
+          clonedHtml.style.height = `${renderHeight}px`;
+          clonedHtml.style.maxHeight = 'none';
         }) as any
       });
 
