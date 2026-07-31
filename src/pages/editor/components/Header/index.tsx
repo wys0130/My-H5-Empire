@@ -95,7 +95,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const sourceEl = originalEl as HTMLElement;
       await document.fonts.ready;
 
-      // ⭐ 核心：完全用 pointData 计算最大底部，彻底摆脱 DOM 缩放干扰
+      // ⭐ 直接用 pointData（来自组件 props）计算高度，彻底摆脱 DOM 缩放干扰
       let maxBottom = 600;
       if (pointData && pointData.length) {
         pointData.forEach((item: any) => {
@@ -119,7 +119,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const renderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 80, 6000));
       const renderWidth = sourceEl.offsetWidth || 375;
 
-      // ----- 离屏沙盒（Off-screen Sandbox）-----
+      // ----- 离屏沙盒 -----
       const sandbox = document.createElement('div');
       sandbox.id = 'coolmall-offscreen-sandbox';
       sandbox.style.cssText = `
@@ -176,7 +176,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       document.body.removeChild(sandbox);
 
-      // ----- 压缩为 200px 宽缩略图（体积 < 6KB）-----
+      // ----- 压缩为 200px 宽缩略图 -----
       const thumbCanvas = document.createElement('canvas');
       const thumbWidth = 200;
       const thumbHeight = Math.round((renderHeight / renderWidth) * thumbWidth);

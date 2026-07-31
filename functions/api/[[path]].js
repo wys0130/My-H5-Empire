@@ -223,7 +223,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ code: 200, msg: "⏪ 已成功回滚至最近的安全快照版本！" }), { headers: corsHeaders });
     }
 
-    // 8. & 9. 商城首页大盘、我的作品、后台管理、操作日志 —— 极致瘦身版
+    // 8. & 9. 商城首页大盘、我的作品、后台管理、操作日志 —— 极致瘦身版（不返回任何图片）
     if (
         pathname.includes("/api/templates/list") ||
         pathname.includes("/api/h5/my-works") ||
@@ -234,7 +234,7 @@ export async function onRequest(context) {
         pathname.includes("/all-works") ||
         pathname.includes("/operation-logs")
     ) {
-        // ----- 如果是操作日志，只查基础字段，绝不查 backup_data -----
+        // ----- 操作日志 -----
         if (pathname.includes("/operation-logs")) {
             try {
                 const logRes = await db.execute(`
@@ -249,7 +249,7 @@ export async function onRequest(context) {
             }
         }
 
-        // ----- 作品大盘 / 审核列表：只取必要字段，严禁 schema_json 和 cover_url -----
+        // ----- 作品列表 -----
         try {
             await db.execute(`
       CREATE TABLE IF NOT EXISTS h5_works (
@@ -264,7 +264,6 @@ export async function onRequest(context) {
       )
     `).catch(() => { });
 
-            // ⭐ 关键：SELECT 里不包含 cover_url 和 schema_json
             const res = await db.execute(`
       SELECT id, title, category, is_published, datetime(updated_at, 'localtime') as date
       FROM h5_works
@@ -282,7 +281,6 @@ export async function onRequest(context) {
                 }];
             }
 
-            // 万能别名映射，cover_url 统一用 '/logo.png'，不再返回任何 Base64
             const normalizedRows = rows.map(item => ({
                 ...item,
                 key: item.id,
@@ -290,7 +288,7 @@ export async function onRequest(context) {
                 workName: item.title,
                 name: item.title,
                 status: item.is_published === 1 ? '已上架' : '待审核',
-                cover_url: '',   // ⭐ 改成空字符串，让前端自行决定占位图
+                cover_url: '',   // ⭐ 重点：返回空字符串，前端自行处理占位图
                 schema: [],
                 json_data: []
             }));
@@ -312,7 +310,7 @@ export async function onRequest(context) {
                 title: "AI 前沿科技博览会",
                 workName: "AI 前沿科技博览会",
                 name: "AI 前沿科技博览会",
-                cover_url: "/logo.png",
+                cover_url: "",
                 category: "h5",
                 is_published: 1,
                 status: "已上架",
@@ -328,7 +326,7 @@ export async function onRequest(context) {
             }), { headers: corsHeaders });
         }
     }
-
+    
     // 10. 保存作品并发布到“我的作品” (/api/h5/save) -> 终极字段自愈版
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
