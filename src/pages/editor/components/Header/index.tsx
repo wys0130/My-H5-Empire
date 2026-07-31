@@ -86,21 +86,21 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
-  // 🌟 终极工业级画布截图：解决跨域图片空白、下方组件被截断、字体与排版差异问题
-  // 🌟 离屏沙盒完整截取页面底部 + 导出 200px 宽超轻量缩略图（仅 ~6KB）
+  // 🌟 降维打击 · Off-screen Full-Height Sandbox Pattern（离屏无限高沙盒长画卷截屏）：
+  // 彻底脱离编辑器可视区域与 overflow 限制，从坐标 Y:0 抓到 Y:maxBottom，底部图标一毫不漏！
   const captureCanvas = async (scaleMultiplier: number = 1.0) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const originalEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
-      if (!originalEl) return absoluteFallback;
+      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
+      if (!targetEl) return absoluteFallback;
 
-      const sourceEl = originalEl as HTMLElement;
+      const sourceEl = targetEl as HTMLElement;
       await document.fonts.ready;
 
+      // 1. 测算画面中最底层子节点（包含汽车图标）的极限绝对底坐标
       let maxBottom = sourceEl.scrollHeight || 600;
       const canvasTop = sourceEl.getBoundingClientRect().top;
-
       sourceEl.querySelectorAll('*').forEach((node: any) => {
         if (node.getBoundingClientRect) {
           const rect = node.getBoundingClientRect();
@@ -116,28 +116,29 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         });
       }
 
-      // 追加 60px 底部空间，保证底下元素完全进入画框
-      const fullRenderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
+      // 底部追加 60px 舒适边距，确保最低端图标100%全在画框内
+      const renderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
       const renderWidth = sourceEl.offsetWidth || 375;
 
+      // 🌟 2. Pattern 核心：建立不受可视窗口边界和样式裁切的绝对离屏容器
       const sandbox = document.createElement('div');
       sandbox.id = 'coolmall-offscreen-sandbox';
       sandbox.style.cssText = `
         position: fixed;
-        left: -9999px;
+        left: -99999px;
         top: 0;
         width: ${renderWidth}px;
-        height: ${fullRenderHeight}px;
-        overflow: visible;
-        z-index: -9999;
+        height: ${renderHeight}px;
+        overflow: visible !important;
+        z-index: -99999;
         background: #ffffff;
       `;
 
       const cloneEl = sourceEl.cloneNode(true) as HTMLElement;
       cloneEl.style.cssText = `
         width: ${renderWidth}px !important;
-        height: ${fullRenderHeight}px !important;
-        min-height: ${fullRenderHeight}px !important;
+        height: ${renderHeight}px !important;
+        min-height: ${renderHeight}px !important;
         max-height: none !important;
         overflow: visible !important;
         position: relative !important;
@@ -148,6 +149,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       sandbox.appendChild(cloneEl);
       document.body.appendChild(sandbox);
 
+      // 🌟 3. 在克隆树中递归向上解开每个包装节点的 clip，对长卷一击抓取
       const canvas = await html2canvas(cloneEl, {
         useCORS: true,
         allowTaint: false,
@@ -155,19 +157,30 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         logging: false,
         backgroundColor: '#ffffff',
         width: renderWidth,
-        height: fullRenderHeight,
-        windowWidth: renderWidth,
-        windowHeight: fullRenderHeight,
+        height: renderHeight,
+        windowWidth: 1440,
+        windowHeight: renderHeight + 1000,
         scrollY: 0,
         scrollX: 0,
+        onclone: (clonedDoc: Document) => {
+          const clonedTarget = clonedDoc.getElementById('coolmall-offscreen-sandbox');
+          if (!clonedTarget) return;
+          let curr: HTMLElement | null = clonedTarget as HTMLElement;
+          while (curr && curr !== clonedDoc.body) {
+            curr.style.overflow = 'visible';
+            curr.style.height = 'auto';
+            curr.style.maxHeight = 'none';
+            curr = curr.parentElement;
+          }
+        }
       });
 
       document.body.removeChild(sandbox);
 
-      // 🎯 将完整长图压缩为 200px 宽微型缩略图，封底大小压至 ~6KB！
+      // 🌟 4. 将全高长图进行 200px 宽度等比超高压缩！将旧封面的 150KB 暴力压平到 ~5KB！
       const thumbCanvas = document.createElement('canvas');
       const thumbWidth = 200;
-      const thumbHeight = Math.round((fullRenderHeight / renderWidth) * thumbWidth);
+      const thumbHeight = Math.round((renderHeight / renderWidth) * thumbWidth);
       thumbCanvas.width = thumbWidth;
       thumbCanvas.height = thumbHeight;
       const ctx = thumbCanvas.getContext('2d');

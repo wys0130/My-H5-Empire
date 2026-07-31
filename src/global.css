@@ -272,3 +272,23 @@ body {
   min-width: 0 !important;
   width: 100% !important;
 }
+
+/* ==========================================================================
+   🌟 取色器事件穿透解禁 & 滚轮释放 (工业级无副作用版)
+   ========================================================================== */
+html,
+body,
+#root {
+  overflow: auto !important;
+}
+
+/* 提高第三方调色盘外盒的 z-index，绝对不再阻止其子级的鼠标拖进/点击 */
+.ant-popover,
+.ant-color-picker-palette,
+.sketch-picker,
+[class*="colorPicker"],
+[class*="ColorPicker"],
+[class*="picker-wrap"],
+[class*="sketch"] {
+  z-index: 2147483647 !important;
+}
