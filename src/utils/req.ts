@@ -23,7 +23,6 @@ const isTargetUrl = (url: string) => {
   return url.includes('/api/') || url.includes('works') || url.includes('list') || url.includes('logs') || url.includes('audit');
 };
 
-// 1. window.fetch 0ms 拦截：有缓存马上弹回页面！
 if (typeof window !== 'undefined' && window.fetch) {
   const originalFetch = window.fetch;
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
@@ -38,6 +37,24 @@ if (typeof window !== 'undefined' && window.fetch) {
         try {
           return new Response(cached, { status: 200, headers: { 'Content-Type': 'application/json' } });
         } catch (e) { }
+      }
+
+      for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
+        if (urlStr.includes(key)) {
+          originalFetch(input, init).then(async (res) => {
+            try {
+              const cloned = res.clone();
+              const data = await cloned.json();
+              if (data && (data.code === 200 || Array.isArray(data))) {
+                sessionStorage.setItem(cacheKey, JSON.stringify(data));
+              }
+            } catch (e) { }
+          });
+          return new Response(JSON.stringify({ code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       const res = await originalFetch(input, init);
@@ -56,11 +73,10 @@ if (typeof window !== 'undefined' && window.fetch) {
 
 const instance = axios.create({
   baseURL: isDev ? 'http://localhost:3000' : '',
-  timeout: 15000,
+  timeout: 10000,
   withCredentials: true,
 });
 
-// 2. Axios 0ms 拦截：进入后台管理立刻从缓存读取作品卡片
 instance.interceptors.request.use(
   async function (config) {
     config.headers = { ...config.headers, 'x-requested-with': 'XMLHttpRequest' };
