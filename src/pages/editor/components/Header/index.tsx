@@ -86,9 +86,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
-  // 🌟 降维打击 · Off-screen Full-Height Sandbox Pattern（离屏无限高沙盒长画卷截屏）：
-  // 彻底脱离编辑器可视区域与 overflow 限制，从坐标 Y:0 抓到 Y:maxBottom，底部图标一毫不漏！
-  // 🌟 降维打击 · Off-screen Sandbox Pattern（离屏脱流全高截屏 + 200px 缩略图）
   const captureCanvas = async (scaleMultiplier: number = 1.0) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
@@ -98,27 +95,31 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const sourceEl = originalEl as HTMLElement;
       await document.fonts.ready;
 
-      // 计算最底部组件的绝对 Y 坐标
-      let maxBottom = sourceEl.scrollHeight || 600;
-      const canvasTop = sourceEl.getBoundingClientRect().top;
-      sourceEl.querySelectorAll('*').forEach((node: any) => {
-        if (node.getBoundingClientRect) {
-          const rect = node.getBoundingClientRect();
-          const bottomDistance = (rect.bottom - canvasTop) + sourceEl.scrollTop;
-          if (bottomDistance > maxBottom) maxBottom = bottomDistance;
-        }
-      });
+      // ⭐ 核心修复：不再依赖 DOM 偏移，直接用 pointData 计算所有组件的最大底部坐标
+      let maxBottom = 600; // 保底一屏高度
       if (pointData && pointData.length) {
         pointData.forEach((item: any) => {
-          const itemBottom = (Number(item.top) || Number(item.y) || 0) + (Number(item.height) || Number(item.h) || 120);
-          if (itemBottom > maxBottom) maxBottom = itemBottom;
+          const top = Number(item.top) || Number(item.y) || 0;
+          const height = Number(item.height) || Number(item.h) || 120;
+          const bottom = top + height;
+          if (bottom > maxBottom) maxBottom = bottom;
+        });
+      } else {
+        // 若 pointData 为空，回退到 DOM 测量
+        const canvasTop = sourceEl.getBoundingClientRect().top;
+        sourceEl.querySelectorAll('*').forEach((node: any) => {
+          if (node.getBoundingClientRect) {
+            const rect = node.getBoundingClientRect();
+            const bottomDistance = (rect.bottom - canvasTop) + sourceEl.scrollTop;
+            if (bottomDistance > maxBottom) maxBottom = bottomDistance;
+          }
         });
       }
 
-      const fullRenderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
+      const renderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 80, 6000));
       const renderWidth = sourceEl.offsetWidth || 375;
 
-      // ----- 离屏沙盒：脱离所有视口限制 -----
+      // 离屏沙盒（彻底脱离视图缩放影响）
       const sandbox = document.createElement('div');
       sandbox.id = 'coolmall-offscreen-sandbox';
       sandbox.style.cssText = `
@@ -126,27 +127,29 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       left: -99999px;
       top: 0;
       width: ${renderWidth}px;
-      height: ${fullRenderHeight}px;
+      height: ${renderHeight}px;
       overflow: visible !important;
       z-index: -99999;
       background: #ffffff;
     `;
+
       const cloneEl = sourceEl.cloneNode(true) as HTMLElement;
+      // ⭐ 关键：强制重置 transform 为 scale(1)，彻底消除父级缩放带来的坐标偏移
       cloneEl.style.cssText = `
       width: ${renderWidth}px !important;
-      height: ${fullRenderHeight}px !important;
-      min-height: ${fullRenderHeight}px !important;
+      height: ${renderHeight}px !important;
+      min-height: ${renderHeight}px !important;
       max-height: none !important;
       overflow: visible !important;
+      transform: scale(1) !important;
+      transform-origin: top left !important;
       position: relative !important;
-      transform: none !important;
       margin: 0 !important;
       padding: 0 !important;
     `;
       sandbox.appendChild(cloneEl);
       document.body.appendChild(sandbox);
 
-      // 对离屏完整长图进行渲染
       const canvas = await html2canvas(cloneEl, {
         useCORS: true,
         allowTaint: false,
@@ -154,15 +157,15 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         logging: false,
         backgroundColor: '#ffffff',
         width: renderWidth,
-        height: fullRenderHeight,
-        windowWidth: 1440,
-        windowHeight: fullRenderHeight + 1000,
+        height: renderHeight,
+        windowWidth: renderWidth,
+        windowHeight: renderHeight,
         scrollY: 0,
         scrollX: 0,
         onclone: (clonedDoc: Document) => {
-          const clonedTarget = clonedDoc.getElementById('coolmall-offscreen-sandbox');
-          if (!clonedTarget) return;
-          let curr: HTMLElement | null = clonedTarget as HTMLElement;
+          const el = clonedDoc.getElementById('coolmall-offscreen-sandbox');
+          if (!el) return;
+          let curr: HTMLElement | null = el as HTMLElement;
           while (curr && curr !== clonedDoc.body) {
             curr.style.overflow = 'visible';
             curr.style.height = 'auto';
@@ -174,10 +177,10 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       document.body.removeChild(sandbox);
 
-      // ----- 缩略图压缩（200px 宽，质量 0.6） -----
+      // 压缩为 200px 宽缩略图（体积 < 6KB）
       const thumbCanvas = document.createElement('canvas');
       const thumbWidth = 200;
-      const thumbHeight = Math.round((fullRenderHeight / renderWidth) * thumbWidth);
+      const thumbHeight = Math.round((renderHeight / renderWidth) * thumbWidth);
       thumbCanvas.width = thumbWidth;
       thumbCanvas.height = thumbHeight;
       const ctx = thumbCanvas.getContext('2d');

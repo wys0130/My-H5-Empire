@@ -264,33 +264,38 @@ export async function onRequest(context) {
       )
     `).catch(() => { });
 
+            // 在 // 8. & 9. 块中，替换这段 SQL 和映射逻辑
             const res = await db.execute(`
-      SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date
-      FROM h5_works
-      ORDER BY updated_at DESC
-    `);
+  SELECT id, title, category, is_published, datetime(updated_at, 'localtime') as date
+  FROM h5_works
+  ORDER BY updated_at DESC
+`);
 
             let rows = res.rows || [];
             if (rows.length === 0) {
                 rows = [{
                     id: "H5_DEMO_001",
                     title: "AI 前沿科技博览会",
-                    cover_url: "/logo.png",
                     category: "h5",
                     is_published: 1,
                     date: "2026-07-31 10:00:00"
                 }];
             }
 
-            // 万能别名映射，兼容各种 Table 字段绑定
             const normalizedRows = rows.map(item => ({
-                ...item,
+                id: item.id,
                 key: item.id,
                 workId: item.id,
+                title: item.title,
                 workName: item.title,
                 name: item.title,
+                category: item.category,
+                is_published: item.is_published,
                 status: item.is_published === 1 ? '已上架' : '待审核',
-                schema: [],          // 列表一律置空，省带宽
+                date: item.date,
+                // 重点：列表接口强制返回空封面，由前端统一用 /logo.png 占位，从而彻底消灭 1.5 MB 传输！
+                cover_url: '',
+                schema: [],
                 json_data: []
             }));
 

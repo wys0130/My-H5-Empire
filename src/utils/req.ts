@@ -83,6 +83,26 @@ instance.interceptors.request.use(
     if (isGet && isTargetUrl(urlStr)) {
       const cacheKey = `SWR_LOCAL_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
+      // 第三刀插入点：在 if (cached) 上方，优先命中最快照
+      for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
+        if (urlStr.includes(key)) {
+          // 如果命中快照，立即返回，同时后台依然发起网络请求更新缓存
+          originalFetch(input, init).then(async (res) => {
+            try {
+              const cloned = res.clone();
+              const data = await cloned.json();
+              if (data && (data.code === 200 || Array.isArray(data))) {
+                sessionStorage.setItem(cacheKey, JSON.stringify(data));
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+              }
+            } catch (_) { }
+          });
+          return new Response(JSON.stringify({ code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
       if (cached) {
         config.adapter = async () => ({
           data: JSON.parse(cached),
