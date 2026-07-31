@@ -87,6 +87,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
 
   // 🌟 终极工业级画布截图：解决跨域图片空白、下方组件被截断、字体与排版差异问题
+  // 🌟 100% 抓取画布全部真实高度（含 transform 组件与页面底端），绝不裁截下方内容
   const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
@@ -97,16 +98,19 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const el = targetEl as HTMLElement;
       await document.fonts.ready;
 
-      // 精准算出画布最底部组件坐标
-      let maxBottom = 480; // 默认保底一个手机一屏的高度
-      const allElements = el.querySelectorAll('*');
-      allElements.forEach?.((node: any) => {
-        if (node.offsetTop !== undefined && node.offsetHeight !== undefined) {
-          const bottom = node.offsetTop + node.offsetHeight;
-          if (bottom > maxBottom) maxBottom = bottom;
+      // 🌟 破局关键：用 getBoundingClientRect 测算每一个子元素相对容器最顶部的绝对距离
+      const canvasRect = el.getBoundingClientRect();
+      let maxBottom = el.scrollHeight || 600;
+
+      el.querySelectorAll('*').forEach((node: any) => {
+        if (node.getBoundingClientRect) {
+          const rect = node.getBoundingClientRect();
+          const bottomDistance = (rect.bottom - canvasRect.top) + el.scrollTop;
+          if (bottomDistance > maxBottom) maxBottom = bottomDistance;
         }
       });
 
+      // 双保险：加上 pointData 里的组件坐标
       if (pointData && pointData.length) {
         pointData.forEach((item: any) => {
           const itemBottom = (Number(item.top) || Number(item.y) || 0) + (Number(item.height) || Number(item.h) || 120);
@@ -114,8 +118,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         });
       }
 
-      // 重点：高度只需紧贴组件底部边界 (+20px 缓冲)，绝不再加 120px 的无效空白
-      const renderHeight = Math.min(maxBottom + 20, 2400);
+      // 给底端再加 40px 的舒适白边缓冲，彻底解决“底下的组件没截选到”
+      const renderHeight = Math.max(el.scrollHeight, Math.min(maxBottom + 40, 4000));
       const renderWidth = el.offsetWidth || 375;
 
       const origHeight = el.style.height;
@@ -140,17 +144,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
           if (!clonedEl) return;
           (clonedEl as HTMLElement).style.transition = 'none';
           (clonedEl as HTMLElement).style.animation = 'none';
-
-          const imgTags = Array.from(clonedEl.querySelectorAll('img'));
-          await Promise.all(
-            imgTags.map(async (img) => {
-              const src = img.getAttribute('src') || '';
-              if (src && !src.startsWith('data:')) {
-                const base64 = await urlToBase64(src);
-                img.setAttribute('src', base64);
-              }
-            })
-          );
         }) as any
       });
 
@@ -410,15 +403,14 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
             <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px 0' }}>
               <Spin spinning={isCapturing} tip="生成中...">
                 {faceUrl ? (
-                  /* 🌟 核心：外层固定 160x284px 手机比例，内部图片 cover + 居顶，永远不膨胀！ */
+                  /* 🌟 改为 contain + 灰底：不裁减长图的一分一毫，完整呈现整页画布 */
                   <div style={{
-                    width: '160px',
-                    height: '284px',
+                    width: '180px',
+                    height: '280px',
                     borderRadius: '8px',
                     overflow: 'hidden',
                     border: '1px solid #e5e7eb',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                    backgroundColor: '#f9fafb',
+                    backgroundColor: '#f3f4f6',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -428,14 +420,14 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
                       style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
+                        objectFit: 'contain',
                         objectPosition: 'top center'
                       }}
                       alt="封面预览"
                     />
                   </div>
                 ) : (
-                  <div style={{ width: '160px', height: '284px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+                  <div style={{ width: '180px', height: '280px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
                     封面生成中...
                   </div>
                 )}

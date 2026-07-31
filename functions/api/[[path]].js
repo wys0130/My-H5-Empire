@@ -223,14 +223,14 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ code: 200, msg: "⏪ 已成功回滚至最近的安全快照版本！" }), { headers: corsHeaders });
     }
 
-    // 8. & 9. 商城首页大盘、我的作品、后台管理“作品审核/作品大盘” -> 终极兼容查询
+    // 8. & 9. 首页大盘、我的作品、后台控制台“作品审核/作品大盘” -> 万能通配查询
     if (
-        pathname.includes("/api/templates/list") ||
-        pathname.includes("/api/h5/my-works") ||
-        pathname.includes("/api/admin/works") ||
-        pathname.includes("/api/works") ||
-        pathname.includes("/work/list") ||
-        pathname.includes("/h5/list")
+        pathname.includes("/work") ||
+        pathname.includes("/h5") ||
+        pathname.includes("/template") ||
+        pathname.includes("/audit") ||
+        pathname.includes("/examine") ||
+        (pathname.includes("/admin/") && request.method === "GET" && !pathname.includes("/user"))
     ) {
         try {
             await db.execute(`
@@ -264,8 +264,6 @@ export async function onRequest(context) {
                 }];
             }
 
-            // 🌟 核心破局：为每条数据补充所有可能的别名字段！
-            // 无论前端 Table 需要 key / id / workId / workName / title / status，全部同时给它！
             const normalizedRows = rows.map(item => ({
                 ...item,
                 key: item.id,
@@ -277,7 +275,6 @@ export async function onRequest(context) {
                 json_data: item.schema_json
             }));
 
-            // 同时返回 data、list、rows 和 total，无论是哪种表格封装都能立刻读出数据！
             return new Response(JSON.stringify({
                 code: 200,
                 success: true,
