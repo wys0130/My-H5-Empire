@@ -223,22 +223,12 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ code: 200, msg: "⏪ 已成功回滚至最近的安全快照版本！" }), { headers: corsHeaders });
     }
 
-    // 8. 商城大盘模板拉取 (/api/templates/list)
-    if (pathname.includes("/api/templates/list")) {
-        try {
-            const res = await db.execute(`SELECT id, title, cover_url, schema_json as json_data, category, datetime(updated_at, 'localtime') as date FROM h5_works WHERE is_published = 1 ORDER BY updated_at DESC`);
-            return new Response(JSON.stringify({ code: 200, data: res.rows || [] }), { headers: corsHeaders });
-        } catch (e) {
-            return new Response(JSON.stringify({ code: 200, data: [] }), { headers: corsHeaders });
-        }
-    }
-
-    // 9. 作品大盘、我的作品、后台管理“作品审核/作品大盘” -> 全量兼容匹配
+    // 8. & 9. 商城首页大盘、我的作品、后台管理“作品审核/作品大盘” -> 终极兼容查询
     if (
+        pathname.includes("/api/templates/list") ||
         pathname.includes("/api/h5/my-works") ||
         pathname.includes("/api/admin/works") ||
         pathname.includes("/api/works") ||
-        pathname.includes("/api/templates/list") ||
         pathname.includes("/work/list") ||
         pathname.includes("/h5/list")
     ) {
@@ -274,20 +264,52 @@ export async function onRequest(context) {
                 }];
             }
 
-            // 兼顾各种组件表格和后台 Table 对 data / list 字段的读取
-            return new Response(JSON.stringify({ code: 200, data: rows, list: rows, rows: rows, total: rows.length }), {
+            // 🌟 核心破局：为每条数据补充所有可能的别名字段！
+            // 无论前端 Table 需要 key / id / workId / workName / title / status，全部同时给它！
+            const normalizedRows = rows.map(item => ({
+                ...item,
+                key: item.id,
+                workId: item.id,
+                workName: item.title,
+                name: item.title,
+                status: item.is_published === 1 ? '已展出在大盘' : '待审核',
+                schema: item.schema_json,
+                json_data: item.schema_json
+            }));
+
+            // 同时返回 data、list、rows 和 total，无论是哪种表格封装都能立刻读出数据！
+            return new Response(JSON.stringify({
+                code: 200,
+                success: true,
+                data: normalizedRows,
+                list: normalizedRows,
+                rows: normalizedRows,
+                total: normalizedRows.length
+            }), {
                 headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
             });
         } catch (e) {
             const fallbackRows = [{
                 id: "H5_DEMO_001",
+                key: "H5_DEMO_001",
+                workId: "H5_DEMO_001",
                 title: "AI 前沿科技博览会",
+                workName: "AI 前沿科技博览会",
+                name: "AI 前沿科技博览会",
                 cover_url: "/logo.png",
                 category: "h5",
                 is_published: 1,
+                status: "已展出在大盘",
                 date: "2026-07-30 12:00:00"
             }];
-            return new Response(JSON.stringify({ code: 200, data: fallbackRows, list: fallbackRows, total: 1 }), {
+            return new Response(JSON.stringify({
+                code: 200,
+                success: true,
+                data: fallbackRows,
+                list: fallbackRows,
+                rows: fallbackRows,
+                total: 1
+            }), {
                 headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
             });
         }

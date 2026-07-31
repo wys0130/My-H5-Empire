@@ -166,3 +166,91 @@ img {
 
 @import '~codemirror/lib/codemirror.css';
 @import '~codemirror/theme/material.css';
+
+/* ==========================================================================
+   🌟 终极修复：右侧属性栏重叠 + 取色器锁死 + 弹窗封面巨无霸
+   ========================================================================== */
+
+/* 1. 彻底解决取色器/弹窗打开时页面被锁死无法滚动的问题 */
+html,
+body,
+#root {
+  overflow: auto !important;
+}
+
+.ant-popover,
+.ant-color-picker-palette,
+.sketch-picker,
+[class*="colorPicker"],
+[class*="ColorPicker"] {
+  z-index: 9999999 !important;
+  pointer-events: auto !important;
+}
+
+/* 2. 根治右侧表单属性：减号、文字名(电话/纯文本)、输入框互相重叠穿模 */
+.ant-form-item-control-input-content>div,
+[class*="formItem"],
+[class*="controlItem"],
+[class*="FormItem"],
+[class*="listItem"],
+[class*="fieldRow"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  margin-bottom: 8px !important;
+}
+
+/* ① 左侧减号/删除键固定为 16px */
+.anticon-minus-circle,
+.anticon-delete,
+.anticon-drag,
+[class*="removeBtn"] {
+  flex: 0 0 16px !important;
+  width: 16px !important;
+  font-size: 16px !important;
+  cursor: pointer;
+}
+
+/* ② 文字名标签：固定为 60px 宽度，超长省略，绝不挤压输入框 */
+[class*="label"],
+[class*="name"],
+.ant-form-item-control-input-content span:not([class]) {
+  flex: 0 0 60px !important;
+  width: 60px !important;
+  min-width: 60px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 13px !important;
+  color: #333 !important;
+}
+
+/* ③ 右侧输入框/选择框：自动撑满剩下全部空间 */
+.ant-input,
+.ant-input-wrapper,
+.ant-select,
+[class*="inputArea"] {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+/* 3. 根治保存弹窗“封面巨无霸”：强制限制为手机黄金比例卡片 */
+.ant-modal-body img[src*="data:image"],
+.ant-modal-body img[src*="http"],
+[class*="previewImg"] {
+  max-width: 160px !important;
+  height: 284px !important;
+  object-fit: cover !important;
+  object-position: top center !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
