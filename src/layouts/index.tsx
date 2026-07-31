@@ -70,21 +70,6 @@ const AdminUsers = () => {
   };
 
   const cols = [
-    {
-      title: '快照',
-      dataIndex: 'cover_url',
-      render: (url: string) => (
-        <img
-          src={url}
-          onError={(e: any) => {
-            e.target.onerror = null;
-            e.target.src = 'https://via.placeholder.com/40x50/f3f4f6/999999?text=无图';
-          }}
-          style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 4 }}
-        />
-      )
-    },
-    { title: '作品名', dataIndex: 'title' },
     { title: 'ID', dataIndex: 'id' },
     { title: '账号邮箱', dataIndex: 'username', render: (t: string) => <b>{t}</b> },
     { title: '身份权限', dataIndex: 'role', render: (r: string) => <Tag color={r === 'admin' ? 'red' : 'blue'}>{r}</Tag> },
@@ -242,7 +227,21 @@ const AdminAudit = () => {
   const logRowSelection = { selectedRowKeys: selectedLogKeys, onChange: (keys: React.Key[]) => setSelectedLogKeys(keys) };
 
   const cols = [
-    { title: '快照', dataIndex: 'cover_url', render: (url: string) => <img src={url} style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 4 }} /> },
+    {
+      title: '快照',
+      dataIndex: 'cover_url',
+      render: (url: string) => (
+        <img
+          src={url}
+          style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 4 }}
+          // 🌟 核心修复：图片加载失败时自动替换为占位图，彻底解决后台一堆碎图的问题
+          onError={(e: any) => {
+            e.target.onerror = null;
+            e.target.src = 'https://via.placeholder.com/40x50/f3f4f6/999999?text=无图';
+          }}
+        />
+      )
+    },
     { title: '作品名', dataIndex: 'title' },
     { title: '状态', dataIndex: 'is_published', render: (val: number, r: any) => <Switch size="small" checked={val === 1} onChange={(c) => toggle(r.id, c)} checkedChildren="已上架" unCheckedChildren="已下架" /> },
     { title: '操作', render: (_: any, r: any) => (<Button danger size="small" onClick={() => { Modal.confirm({ title: '确认销毁？', onOk: () => { fetch('/api/admin/force-delete-work', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-role': 'admin', 'x-user-id': '1' }, body: JSON.stringify({ id: r.id }) }).then(() => { message.success('已销毁并备份'); load(); }); } }); }}>强制销毁</Button>) }
