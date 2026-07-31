@@ -200,26 +200,38 @@ img {
 @import '~codemirror/theme/material.css';
 
 /* ==========================================================================
-   🌟 纯净交互修正：仅提升取色器层级 + 表单齐平
+   🌟 修复：取色器层级穿透 / 滚轮自如 / 属性表单横排齐齐整整
    ========================================================================== */
+
+/* 1. 只提最高 z-index，绝对不再加 position/overflow 干扰原生定位 */
 .ant-popover,
 .ant-color-picker-palette,
 .sketch-picker,
 [class*="colorPicker"],
 [class*="ColorPicker"],
 [class*="picker-wrap"],
+[class*="pickerWrap"],
+[class*="color-wrap"],
+[class*="colorWrap"],
 [class*="sketch"] {
   z-index: 2147483647 !important;
-  pointer-events: auto !important;
 }
 
+/* 2. 保证页面上下滑动滚轮不被锁屏 */
+body {
+  overflow: auto !important;
+}
+
+/* 3. 保护表单左侧标签，不换行，不被挤压 */
 .ant-form-item-label,
 .ant-form-item-label>label {
   white-space: nowrap !important;
   flex-shrink: 0 !important;
+  max-width: none !important;
   width: auto !important;
 }
 
+/* 4. 动态行组件（减号 - | 名字 | 输入框）一字齐平排开 */
 .ant-form-item-control-input-content .ant-row,
 .ant-form-item-control-input-content [class*="listItem"],
 .ant-form-item-control-input-content [class*="formItemRow"] {

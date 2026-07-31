@@ -3,7 +3,7 @@ import { message } from 'antd';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// 🌟 100% 完整无删减初始快照，复原完整公告、轮播图与示例大盘！
+// 🌟 全站冷启动数据池：商城、我的作品、后台所有审查数据，完全不让屏幕白等 1 秒！
 const COLD_START_SNAPSHOTS: Record<string, any> = {
   '/api/templates/list': [],
   '/api/h5/my-works': [],
@@ -21,10 +21,9 @@ const COLD_START_SNAPSHOTS: Record<string, any> = {
 
 const isTargetUrl = (url: string) => {
   if (!url) return false;
-  return url.includes('/api/') || url.includes('works') || url.includes('list') || url.includes('logs') || url.includes('audit') || url.includes('announcement') || url.includes('carousel');
+  return url.includes('/api/') || url.includes('works') || url.includes('list') || url.includes('logs') || url.includes('audit') || url.includes('overview');
 };
 
-// 🌟 1. window.fetch 原生 SWR 秒开拦截
 if (typeof window !== 'undefined' && window.fetch) {
   const originalFetch = window.fetch;
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
@@ -32,22 +31,20 @@ if (typeof window !== 'undefined' && window.fetch) {
     const isGet = !init || !init.method || init.method.toUpperCase() === 'GET';
 
     if (isGet && isTargetUrl(urlStr)) {
-      const cacheKey = `COOL_SWR_${urlStr}`;
-      const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
+      const cacheKey = `SWR_CACHE_${urlStr}`;
+      const cached = sessionStorage.getItem(cacheKey);
 
-      // 后台异步静默拉取更新，绝不挂起当前屏幕展示
-      originalFetch(input, init).then(async (res) => {
+      const networkPromise = originalFetch(input, init).then(async (res) => {
+        const cloned = res.clone();
         try {
-          const cloned = res.clone();
           const data = await cloned.json();
           if (data && (data.code === 200 || Array.isArray(data))) {
             sessionStorage.setItem(cacheKey, JSON.stringify(data));
-            localStorage.setItem(cacheKey, JSON.stringify(data));
           }
         } catch (e) { }
+        return res;
       });
 
-      // 🌟 第0毫秒直接返回缓存或初始快照！
       if (cached) {
         try {
           return new Response(cached, { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -62,6 +59,7 @@ if (typeof window !== 'undefined' && window.fetch) {
           });
         }
       }
+      return networkPromise;
     }
     return originalFetch(input, init);
   };
@@ -69,34 +67,74 @@ if (typeof window !== 'undefined' && window.fetch) {
 
 const instance = axios.create({
   baseURL: isDev ? 'http://localhost:3000' : '',
-  timeout: 10000,
+  timeout: 20000,
   withCredentials: true,
 });
 
-// 🌟 2. Axios 0ms SWR 拦截，进入后台工作台直接画表！
 instance.interceptors.request.use(
   async function (config) {
-    config.headers = { ...config.headers, 'x-requested-with': 'XMLHttpRequest' };
+    config.headers = {
+      ...config.headers,
+      'x-requested-with': 'XMLHttpRequest',
+    };
+
     const isGet = !config.method || config.method.toUpperCase() === 'GET';
     const urlStr = config.url || '';
 
     if (isGet && isTargetUrl(urlStr)) {
-      const cacheKey = `COOL_SWR_${urlStr}`;
-      const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
+      const cacheKey = `SWR_CACHE_${urlStr}`;
+      const cached = sessionStorage.getItem(cacheKey);
+
+      const realUrl = `${config.baseURL || ''}${urlStr}`;
+      window.fetch(realUrl).then(async (res) => {
+        try {
+          const data = await res.json();
+          if (data && (data.code === 200 || Array.isArray(data))) {
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          }
+        } catch (e) { }
+      });
+
       if (cached) {
-        config.adapter = async () => ({
-          data: JSON.parse(cached),
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-        });
-        return config;
+        try {
+          config.adapter = async () => ({
+            data: JSON.parse(cached),
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          });
+          return config;
+        } catch (e) { }
+      }
+
+      for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
+        if (urlStr.includes(key)) {
+          config.adapter = async () => ({
+            data: { code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          });
+          return config;
+        }
       }
     }
     return config;
   },
-  (err) => Promise.reject(err)
+  function (error) {
+    return Promise.reject(error);
+  }
+);
+
+instance.interceptors.response.use(
+  function (response) {
+    return response;
+  },
+  function (error) {
+    return Promise.reject(error);
+  }
 );
 
 export default instance;
