@@ -24,42 +24,6 @@ interface HeaderComponentProps {
   importTpl: any;
 }
 
-// 🌟 辅助工具：将网络图片安全转换为 Base64，彻底破解跨域 CDN 导致 canvas 截图空白的问题
-const urlToBase64 = async (url: string): Promise<string> => {
-  if (!url || url.startsWith('data:')) return url;
-  try {
-    // 1. 优先尝试 fetch 转 blob -> base64
-    const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch (err) {
-    // 2. 如果 fetch 受到严格 CORS 限制，降级使用 Image + Canvas 读取
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || img.width;
-          canvas.height = img.naturalHeight || img.height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-        } catch (e) {
-          resolve(url); // 兜底：原样放行，不卡死程序
-        }
-      };
-      img.onerror = () => resolve(url);
-      img.src = url;
-    });
-  }
-};
-
 const HeaderComponent = memo((props: HeaderComponentProps) => {
   const { pointData, location, clearData, undohandler, redohandler, importTpl } = props;
 
@@ -86,9 +50,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
-  // 🌟 终极工业级画布截图：解决跨域图片空白、下方组件被截断、字体与排版差异问题
-  // 🌟 降维打击 · Off-screen Rendering Pattern（离屏沙盒模式）：
-  // 彻底脱离编辑器滚动视口约束，在 -9999px 独立渲染全长真实 DOM，从顶到底 100% 抓取，下方组件一毫秒都不漏！
+  // 🌟 降维打击 · Off-screen Rendering Pattern（离屏脱流沙盒模式）
+  // 彻底摆脱当前窗口滚动条与可见高度约束，100% 从头部抓取至底端组件（含汽车图标）
   const captureCanvas = async (scaleMultiplier: number = 1.5) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
@@ -99,7 +62,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const sourceEl = originalEl as HTMLElement;
       await document.fonts.ready;
 
-      // 1. 计算真正包含所有底端组件的绝对极限高度
+      // 测算所有子组件的真实底部坐标
       let maxBottom = sourceEl.scrollHeight || 600;
       const canvasTop = sourceEl.getBoundingClientRect().top;
 
@@ -118,11 +81,11 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         });
       }
 
-      // 给底端追加 60px 缓冲区，保证下方的任何图标(小车等)都在画框之内
-      const fullRenderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
+      // 追加缓冲底部空间，彻底包裹下方元素
+      const fullRenderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 80, 6000));
       const renderWidth = sourceEl.offsetWidth || 375;
 
-      // 🌟 2. 构建独立离屏沙盒（Off-screen Sandbox Container），彻底摆脱 viewport 与 overflow 约束！
+      // 1. 在屏幕看不见的左侧构建不受父级 overflow 约束的离屏沙盒
       const sandbox = document.createElement('div');
       sandbox.id = 'coolmall-offscreen-sandbox';
       sandbox.style.cssText = `
@@ -136,7 +99,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         background: #ffffff;
       `;
 
-      // 深拷贝画布 DOM 树进沙盒
       const cloneEl = sourceEl.cloneNode(true) as HTMLElement;
       cloneEl.style.cssText = `
         width: ${renderWidth}px !important;
@@ -152,7 +114,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       sandbox.appendChild(cloneEl);
       document.body.appendChild(sandbox);
 
-      // 🌟 3. 对着不受限制的离屏完整节点直接拍照
+      // 2. 对离屏完整长图直接进行绘制
       const canvas = await html2canvas(cloneEl, {
         useCORS: true,
         allowTaint: false,
@@ -167,7 +129,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         scrollX: 0,
       });
 
-      // 🌟 4. 拍完即焚，内存零残留
       document.body.removeChild(sandbox);
 
       const base64 = canvas.toDataURL('image/jpeg', 0.9);
@@ -180,14 +141,12 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       return res.code === 200 ? (res.url || res.data?.url) : absoluteFallback;
     } catch (e) {
       console.error("Cover capture error:", e);
-      // 出现异常也必须确保清理沙盒
       const existingSandbox = document.getElementById('coolmall-offscreen-sandbox');
       if (existingSandbox) document.body.removeChild(existingSandbox);
       return absoluteFallback;
     }
   };
 
-  // 🌟 2. 纯前端渲染截图，去掉超时卡顿的远端请求
   const autoGenerateCover = async (isSilent = false) => {
     setIsCapturing(true);
     if (!isSilent) message.loading({ content: '抓取封面中...', key: 'poster', duration: 0 });
@@ -203,7 +162,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     }
   };
 
-  // 🌟 3. 每次点“发布作品”，无条件把刚修改过的内容重新截一遍！
   const openPublishModal = () => {
     setModalConfig({ visible: true });
     autoGenerateCover(true);
@@ -223,7 +181,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     message.loading({ content: '正在发布到我的作品...', key: 'publish', duration: 0 });
     const workId = props.location.query?.tid || ('H5_' + Date.now());
 
-    // 🌟 核心修正：is_published 设为 1，直接存入“我的作品”，由你自主掌控上下架、编辑、删除！
     const res = await fetch('/api/h5/save', {
       method: 'POST',
       headers: {
@@ -236,14 +193,14 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         title: saveTplName,
         schema: pointData,
         cover_url: faceUrl,
-        is_published: 1 // 1 代表正式发布至“我的作品”大盘
+        is_published: 1
       })
     }).then(r => r.json());
 
     if (res.code === 200) {
       message.success({ content: '🚀 已成功发布到我的作品！', key: 'publish', duration: 3 });
       setModalConfig({ visible: false });
-      history.push('/mall?tab=my'); // 自动跳转至我的作品页
+      history.push('/mall?tab=my');
     } else {
       message.error({ content: res.msg || '发布失败', key: 'publish', duration: 3 });
     }
@@ -312,7 +269,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   );
 
   return (
-    // 🌟 100% 紧凑布局：去掉旧版 minWidth，改为 width: 100% 与合适间距，保证所有按钮单行展平不换行！
     <div
       style={{
         display: 'flex',
@@ -328,7 +284,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         gap: '12px',
       }}
     >
-      {/* 🔴 左侧区：返回按钮 + 品牌 + 作品名称设置 */}
       <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '10px' }}>
         <div onClick={toBack} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
           <ArrowLeftOutlined style={{ fontSize: '16px', color: '#666' }} />
@@ -346,7 +301,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         </div>
       </div>
 
-      {/* 🟡 中央操作区：撤销/重做/清空/预览 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
         <Button size="small" onClick={undohandler} disabled={!pointData.length} icon={<UndoOutlined />}>撤销</Button>
         <Button size="small" onClick={redohandler} disabled={!pointData.length} icon={<RedoOutlined />}>重做</Button>
@@ -363,7 +317,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         </Dropdown>
       </div>
 
-      {/* 🟢 右侧收尾区：只保留唯一的一颗登录/我的/后台管理按钮，彻底解决重复显出两颗“后台” */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
         <Button size="small" onClick={() => history.push('/mall?tab=my')} style={{ borderColor: '#e11d48', color: '#e11d48' }}>
           我的作品
@@ -401,7 +354,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         </Button>
       </div>
 
-      {/* 封面海报模态框与草稿弹窗 */}
       <Modal title="✨ 海报预览" visible={showFaceModal} footer={null} width={380} destroyOnClose={true} onCancel={() => setShowFaceModal(false)} bodyStyle={{ padding: '16px' }}>
         <img src={faceUrl} style={{ width: '100%', borderRadius: '12px' }} alt="海报" />
       </Modal>
@@ -426,7 +378,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
             <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px 0' }}>
               <Spin spinning={isCapturing} tip="生成中...">
                 {faceUrl ? (
-                  /* 🌟 改为 contain + 灰底：不裁减长图的一分一毫，完整呈现整页画布 */
                   <div style={{
                     width: '180px',
                     height: '280px',

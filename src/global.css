@@ -200,38 +200,34 @@ img {
 @import '~codemirror/theme/material.css';
 
 /* ==========================================================================
-   🌟 终极通杀修复：取色器可点击可滚动 / 表单文字不折行
+   🌟 纯净无错修复：释放滚轮 + 取色器绝对交互灵敏 + 属性栏齐整
    ========================================================================== */
 
-/* 1. 强制穿透所有颜色选择器面板，层级提到最高 */
+/* 1. 只提最高层级，绝对绝不加 pointer-events:none 等可能破坏 SketchPicker 内部点击的代码 */
 .ant-popover,
 .ant-color-picker-palette,
 .sketch-picker,
-[class*="color-picker"],
 [class*="colorPicker"],
 [class*="ColorPicker"],
 [class*="picker-wrap"],
+[class*="pickerWrap"],
+[class*="color-wrap"],
+[class*="colorWrap"],
 [class*="sketch"] {
   z-index: 2147483647 !important;
   pointer-events: auto !important;
 }
 
-/* 2. 彻底销毁选中取色器时在底层生成的全屏透明阻挡罩，不再锁死页面点击与滑轮 */
-div[class*="cover"][style*="fixed"],
-div[class*="mask"][style*="transparent"],
-div[class*="backdrop"] {
-  pointer-events: none !important;
-}
-
-/* 3. 保护表单左侧标签文字，绝不换行，绝不被右侧控件挤扁 */
+/* 2. 保护左侧标签文字，杜绝折行变竖排 */
 .ant-form-item-label,
 .ant-form-item-label>label {
   white-space: nowrap !important;
   flex-shrink: 0 !important;
+  max-width: none !important;
   width: auto !important;
 }
 
-/* 4. 动态表单行（减号 - | 标签名 | 输入组件）整齐一字横排 */
+/* 3. 右侧动态表单列表行（减号 - | 标签名 | 输入框）：横向齐排，互不遮扯 */
 .ant-form-item-control-input-content .ant-row,
 .ant-form-item-control-input-content [class*="listItem"],
 .ant-form-item-control-input-content [class*="formItemRow"] {
