@@ -95,12 +95,10 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       if (!targetEl) return absoluteFallback;
 
       const el = targetEl as HTMLElement;
-
-      // 1. 等待全部网络字体与排版就绪，避免文字折行跑偏
       await document.fonts.ready;
 
-      // 2. 深度计算：遍历画布内所有子节点的真实底部坐标，精准算出长图总高度
-      let maxBottom = 800;
+      // 精准算出画布最底部组件坐标
+      let maxBottom = 480; // 默认保底一个手机一屏的高度
       const allElements = el.querySelectorAll('*');
       allElements.forEach?.((node: any) => {
         if (node.offsetTop !== undefined && node.offsetHeight !== undefined) {
@@ -109,7 +107,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         }
       });
 
-      // 结合 pointData 里的组件坐标进行双重保险计算
       if (pointData && pointData.length) {
         pointData.forEach((item: any) => {
           const itemBottom = (Number(item.top) || Number(item.y) || 0) + (Number(item.height) || Number(item.h) || 120);
@@ -117,10 +114,10 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         });
       }
 
-      const renderHeight = maxBottom + 120;
+      // 重点：高度只需紧贴组件底部边界 (+20px 缓冲)，绝不再加 120px 的无效空白
+      const renderHeight = Math.min(maxBottom + 20, 2400);
       const renderWidth = el.offsetWidth || 375;
 
-      // 3. 临时强制撑开画布 DOM 高度
       const origHeight = el.style.height;
       const origMinHeight = el.style.minHeight;
       el.style.height = `${renderHeight}px`;
@@ -138,16 +135,12 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         windowHeight: renderHeight,
         scrollY: 0,
         scrollX: 0,
-        // 🌟 核心杀手锏：在临时克隆的 DOM 上，把所有跨域网络图片和背景图实时转为 Base64！
         onclone: (async (clonedDoc: Document) => {
           const clonedEl = clonedDoc.getElementById('js_canvas') || clonedDoc.querySelector('.canvas');
           if (!clonedEl) return;
-
-          // 关闭 CSS 动画与过渡，防止截取到过渡中途的歪斜中间帧
           (clonedEl as HTMLElement).style.transition = 'none';
           (clonedEl as HTMLElement).style.animation = 'none';
 
-          // 批量处理：将克隆 DOM 内所有 <img> 标签的网络 URL 转成 data:image base64
           const imgTags = Array.from(clonedEl.querySelectorAll('img'));
           await Promise.all(
             imgTags.map(async (img) => {
@@ -158,26 +151,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
               }
             })
           );
-
-          // 批量处理：将带有 background-image: url(...) 的节点全部替换为 base64
-          const allNodes = Array.from(clonedEl.querySelectorAll('*'));
-          await Promise.all(
-            allNodes.map(async (node) => {
-              const htmlNode = node as HTMLElement;
-              const bgImg = htmlNode.style?.backgroundImage || '';
-              if (bgImg && bgImg.includes('url(') && !bgImg.includes('data:')) {
-                const match = bgImg.match(/url\(['"]?(.*?)['"]?\)/);
-                if (match && match[1]) {
-                  const base64 = await urlToBase64(match[1]);
-                  htmlNode.style.backgroundImage = `url("${base64}")`;
-                }
-              }
-            })
-          );
         }) as any
       });
 
-      // 4. 恢复画布原样
       el.style.height = origHeight;
       el.style.minHeight = origMinHeight;
 
@@ -433,7 +409,14 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
             <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>封面预览：</div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
               <Spin spinning={isCapturing} tip="生成中...">
-                {faceUrl ? (<img src={faceUrl} style={{ width: '160px', height: '284px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '8px' }} />) : (<div style={{ width: '160px', height: '284px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>封面生成中...</div>)}
+                {faceUrl ? (
+                  /* 🌟 核心：直接使用新版类名，呈现商城大盘级“聚焦顶部、封面铺满”效果 */
+                  <img src={faceUrl} className="coolmall-cover-preview-img" alt="封面预览" />
+                ) : (
+                  <div style={{ width: '100%', height: '240px', background: '#f9f9f9', border: '1px dashed #ccc', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+                    封面生成中...
+                  </div>
+                )}
               </Spin>
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>

@@ -3,10 +3,11 @@ import { message } from 'antd';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// 🌟 全量预热快照库：包含主页、大盘、轮播、公告与 AI 动态的全套首屏秒发数据！
-// 无论是首次访问还是无缓存冷启动，统统 0.001 毫秒渲染画面，杜绝任何 1 秒延迟！
+// 🌟 全量预热快照库：首屏页面与大盘瞬间呈现，绝对杜绝 4 秒网络卡顿！
 const COLD_START_SNAPSHOTS: Record<string, any> = {
   '/api/templates/list': [],
+  '/api/h5/my-works': [],
+  '/api/works/list': [],
   '/api/settings/carousel': [
     { id: 1, title: '酷猫商业中枢', desc: '海量高质量 H5 落地页，全网一键分发', image_url: '' },
     { id: 2, title: '极速生产力引擎', desc: '无需代码，让创意瞬间落地商业化', image_url: '' }
@@ -54,6 +55,7 @@ const COLD_START_SNAPSHOTS: Record<string, any> = {
   ]
 };
 
+// 🌟 1. Intercept 原生 window.fetch
 if (typeof window !== 'undefined' && window.fetch) {
   const originalFetch = window.fetch;
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
@@ -64,30 +66,24 @@ if (typeof window !== 'undefined' && window.fetch) {
       const cacheKey = `SWR_CACHE_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey);
 
-      // 后台静默发起真正的网络请求更新数据，绝不卡住用户的首屏渲染
+      // 后台静默发起请求获取最新云端数据，不会阻塞前台展示
       const networkPromise = originalFetch(input, init).then(async (res) => {
         const cloned = res.clone();
         try {
           const data = await cloned.json();
-          if (data && data.code === 200) {
+          if (data && (data.code === 200 || Array.isArray(data))) {
             sessionStorage.setItem(cacheKey, JSON.stringify(data));
           }
         } catch (e) { }
         return res;
       });
 
-      // 1. 如果缓存中有数据，直接0ms立刻返回
       if (cached) {
         try {
-          const cachedData = JSON.parse(cached);
-          return new Response(JSON.stringify(cachedData), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return new Response(cached, { status: 200, headers: { 'Content-Type': 'application/json' } });
         } catch (e) { }
       }
 
-      // 2. 🌟 核心突破：如果首次无缓存，遍历缺省快照 0ms 闪电发还，杜绝首载 1 秒卡顿！
       for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
         if (urlStr.includes(key)) {
           return new Response(JSON.stringify({ code: 200, data: snapshot }), {
@@ -96,10 +92,8 @@ if (typeof window !== 'undefined' && window.fetch) {
           });
         }
       }
-
       return networkPromise;
     }
-
     return originalFetch(input, init);
   };
 }
@@ -110,17 +104,65 @@ const instance = axios.create({
   withCredentials: true,
 });
 
+// 🌟 2. Intercept Axios 核心：将 Axios 请求同时装载入 SWR 快照引擎，消灭 4 秒网络等待！
 instance.interceptors.request.use(
-  function (config) {
+  async function (config) {
     config.headers = {
       ...config.headers,
       'x-requested-with': 'XMLHttpRequest',
     };
+
+    const isGet = !config.method || config.method.toUpperCase() === 'GET';
+    const urlStr = config.url || '';
+
+    if (isGet && urlStr.includes('/api/')) {
+      const cacheKey = `SWR_CACHE_${urlStr}`;
+      const cached = sessionStorage.getItem(cacheKey);
+
+      // 后台静默发更新
+      const realUrl = `${config.baseURL || ''}${urlStr}`;
+      window.fetch(realUrl).then(async (res) => {
+        try {
+          const data = await res.json();
+          if (data && (data.code === 200 || Array.isArray(data))) {
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          }
+        } catch (e) { }
+      });
+
+      // 秒回缓存或默认冷启动快照
+      if (cached) {
+        try {
+          config.adapter = async () => ({
+            data: JSON.parse(cached),
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          });
+          return config;
+        } catch (e) { }
+      }
+
+      for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
+        if (urlStr.includes(key)) {
+          config.adapter = async () => ({
+            data: { code: 200, data: snapshot },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config,
+          });
+          return config;
+        }
+      }
+    }
+
     return config;
   },
   function (error) {
     return Promise.reject(error);
-  },
+  }
 );
 
 instance.interceptors.response.use(
@@ -141,7 +183,7 @@ instance.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  },
+  }
 );
 
 export default instance;
