@@ -249,7 +249,7 @@ export async function onRequest(context) {
             }
         }
 
-        // ----- 作品大盘 / 审核列表：只取必要字段，严禁 schema_json! -----
+        // ----- 作品大盘 / 审核列表：只取必要字段，严禁 schema_json 和 cover_url -----
         try {
             await db.execute(`
       CREATE TABLE IF NOT EXISTS h5_works (
@@ -264,12 +264,12 @@ export async function onRequest(context) {
       )
     `).catch(() => { });
 
-            // 在 // 8. & 9. 块中，替换这段 SQL 和映射逻辑
+            // ⭐ 关键：SELECT 里不包含 cover_url 和 schema_json
             const res = await db.execute(`
-  SELECT id, title, category, is_published, datetime(updated_at, 'localtime') as date
-  FROM h5_works
-  ORDER BY updated_at DESC
-`);
+      SELECT id, title, category, is_published, datetime(updated_at, 'localtime') as date
+      FROM h5_works
+      ORDER BY updated_at DESC
+    `);
 
             let rows = res.rows || [];
             if (rows.length === 0) {
@@ -282,19 +282,15 @@ export async function onRequest(context) {
                 }];
             }
 
+            // 万能别名映射，cover_url 统一用 '/logo.png'，不再返回任何 Base64
             const normalizedRows = rows.map(item => ({
-                id: item.id,
+                ...item,
                 key: item.id,
                 workId: item.id,
-                title: item.title,
                 workName: item.title,
                 name: item.title,
-                category: item.category,
-                is_published: item.is_published,
                 status: item.is_published === 1 ? '已上架' : '待审核',
-                date: item.date,
-                // 重点：列表接口强制返回空封面，由前端统一用 /logo.png 占位，从而彻底消灭 1.5 MB 传输！
-                cover_url: '',
+                cover_url: '/logo.png',   // 固定本地占位，永远不传大图
                 schema: [],
                 json_data: []
             }));

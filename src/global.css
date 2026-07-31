@@ -200,111 +200,17 @@ img {
 @import '~codemirror/theme/material.css';
 
 /* ==========================================================================
-   🌟 修复：取色器层级穿透 / 滚轮自如 / 属性表单横排齐齐整整
+   🔧 终极修复：取色器交互释放 + 滚轮自由 + 表单横排对齐（无重复）
    ========================================================================== */
 
-/* 1. 只提最高 z-index，绝对不再加 position/overflow 干扰原生定位 */
-.ant-popover,
-.ant-color-picker-palette,
-.sketch-picker,
-[class*="colorPicker"],
-[class*="ColorPicker"],
-[class*="picker-wrap"],
-[class*="pickerWrap"],
-[class*="color-wrap"],
-[class*="colorWrap"],
-[class*="sketch"] {
-  z-index: 2147483647 !important;
-}
-
-/* 2. 保证页面上下滑动滚轮不被锁屏 */
-body {
-  overflow: auto !important;
-}
-
-/* 3. 保护表单左侧标签，不换行，不被挤压 */
-.ant-form-item-label,
-.ant-form-item-label>label {
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  max-width: none !important;
-  width: auto !important;
-}
-
-/* 4. 动态行组件（减号 - | 名字 | 输入框）一字齐平排开 */
-.ant-form-item-control-input-content .ant-row,
-.ant-form-item-control-input-content [class*="listItem"],
-.ant-form-item-control-input-content [class*="formItemRow"] {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  flex-wrap: nowrap !important;
-  width: 100% !important;
-  gap: 8px !important;
-  margin-bottom: 8px !important;
-}
-
-.anticon-minus-circle,
-.anticon-delete,
-[class*="removeBtn"] {
-  flex: 0 0 16px !important;
-  width: 16px !important;
-  font-size: 16px !important;
-  margin: 0 4px 0 0 !important;
-  cursor: pointer;
-}
-
-.ant-form-item-control-input-content span:not([class]),
-.ant-form-item-control-input-content [class*="label"] {
-  flex: 0 0 50px !important;
-  width: 50px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  font-size: 13px !important;
-}
-
-.ant-form-item-control-input-content .ant-input,
-.ant-form-item-control-input-content .ant-input-wrapper,
-.ant-form-item-control-input-content .ant-select {
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-  width: 100% !important;
-}
-
-/* ==========================================================================
-   🌟 取色器事件穿透解禁 & 滚轮释放 (工业级无副作用版)
-   ========================================================================== */
+/* 1. 解锁 body 滚动锁（覆盖 AntD 内联样式） */
 html,
 body,
 #root {
   overflow: auto !important;
 }
 
-/* 提高第三方调色盘外盒的 z-index，绝对不再阻止其子级的鼠标拖进/点击 */
-.ant-popover,
-.ant-color-picker-palette,
-.sketch-picker,
-[class*="colorPicker"],
-[class*="ColorPicker"],
-[class*="picker-wrap"],
-[class*="sketch"] {
-  z-index: 2147483647 !important;
-}
-
-/* ============================================================
-   🔧 极致修复：取色器交互释放 + 滚轮自由 + 表单横排对齐
-   ============================================================ */
-
-/* 1. 解锁 body 滚动锁（AntD Modal 内联样式压制） */
-html,
-body,
-#root {
-  overflow: auto !important;
-}
-
-/* 2. 仅提高取色器层级，绝对不加 position 污染定位 */
+/* 2. 取色器仅提升层级，不加 position 污染 */
 .ant-popover,
 .ant-color-picker-palette,
 .sketch-picker,

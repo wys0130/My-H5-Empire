@@ -95,8 +95,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const sourceEl = originalEl as HTMLElement;
       await document.fonts.ready;
 
-      // ⭐ 核心修复：不再依赖 DOM 偏移，直接用 pointData 计算所有组件的最大底部坐标
-      let maxBottom = 600; // 保底一屏高度
+      // ⭐ 核心：完全用 pointData 计算最大底部，彻底摆脱 DOM 缩放干扰
+      let maxBottom = 600;
       if (pointData && pointData.length) {
         pointData.forEach((item: any) => {
           const top = Number(item.top) || Number(item.y) || 0;
@@ -105,7 +105,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
           if (bottom > maxBottom) maxBottom = bottom;
         });
       } else {
-        // 若 pointData 为空，回退到 DOM 测量
+        // 兜底：如果 pointData 为空，才用 DOM 测量
         const canvasTop = sourceEl.getBoundingClientRect().top;
         sourceEl.querySelectorAll('*').forEach((node: any) => {
           if (node.getBoundingClientRect) {
@@ -119,7 +119,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       const renderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 80, 6000));
       const renderWidth = sourceEl.offsetWidth || 375;
 
-      // 离屏沙盒（彻底脱离视图缩放影响）
+      // ----- 离屏沙盒（Off-screen Sandbox）-----
       const sandbox = document.createElement('div');
       sandbox.id = 'coolmall-offscreen-sandbox';
       sandbox.style.cssText = `
@@ -134,7 +134,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
     `;
 
       const cloneEl = sourceEl.cloneNode(true) as HTMLElement;
-      // ⭐ 关键：强制重置 transform 为 scale(1)，彻底消除父级缩放带来的坐标偏移
       cloneEl.style.cssText = `
       width: ${renderWidth}px !important;
       height: ${renderHeight}px !important;
@@ -177,7 +176,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       document.body.removeChild(sandbox);
 
-      // 压缩为 200px 宽缩略图（体积 < 6KB）
+      // ----- 压缩为 200px 宽缩略图（体积 < 6KB）-----
       const thumbCanvas = document.createElement('canvas');
       const thumbWidth = 200;
       const thumbHeight = Math.round((renderHeight / renderWidth) * thumbWidth);

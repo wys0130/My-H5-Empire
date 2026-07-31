@@ -34,35 +34,47 @@ if (typeof window !== 'undefined' && window.fetch) {
       const cacheKey = `SWR_LOCAL_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
 
-      // 后台静默更新（不阻塞主线程）
-      originalFetch(input, init).then(async (res) => {
-        try {
-          const cloned = res.clone();
-          const data = await cloned.json();
-          if (data && (data.code === 200 || Array.isArray(data))) {
-            const str = JSON.stringify(data);
-            sessionStorage.setItem(cacheKey, str);
-            localStorage.setItem(cacheKey, str);
-          }
-        } catch (_) { }
-      });
-
-      // 1st 防线：缓存存在 -> 0ms 返回
-      if (cached) {
-        try {
-          return new Response(cached, { status: 200, headers: { 'Content-Type': 'application/json' } });
-        } catch (_) { }
-      }
-
-      // 2nd 防线：快照兜底 -> 0ms 返回
+      // ⭐ 优先匹配快照，0ms 返回
       for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
         if (urlStr.includes(key)) {
+          // 后台静默更新缓存
+          originalFetch(input, init).then(async (res) => {
+            try {
+              const cloned = res.clone();
+              const data = await cloned.json();
+              if (data && (data.code === 200 || Array.isArray(data))) {
+                const str = JSON.stringify(data);
+                sessionStorage.setItem(cacheKey, str);
+                localStorage.setItem(cacheKey, str);
+              }
+            } catch (_) { }
+          });
           return new Response(JSON.stringify({ code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
           });
         }
       }
+
+      // 然后才检查缓存
+      if (cached) {
+        try {
+          return new Response(cached, { status: 200, headers: { 'Content-Type': 'application/json' } });
+        } catch (_) { }
+      }
+
+      // 没缓存也没快照，走网络
+      const res = await originalFetch(input, init);
+      try {
+        const cloned = res.clone();
+        const data = await cloned.json();
+        if (data && (data.code === 200 || Array.isArray(data))) {
+          const str = JSON.stringify(data);
+          sessionStorage.setItem(cacheKey, str);
+          localStorage.setItem(cacheKey, str);
+        }
+      } catch (_) { }
+      return res;
     }
     return originalFetch(input, init);
   };
@@ -83,26 +95,6 @@ instance.interceptors.request.use(
     if (isGet && isTargetUrl(urlStr)) {
       const cacheKey = `SWR_LOCAL_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
-      // 第三刀插入点：在 if (cached) 上方，优先命中最快照
-      for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
-        if (urlStr.includes(key)) {
-          // 如果命中快照，立即返回，同时后台依然发起网络请求更新缓存
-          originalFetch(input, init).then(async (res) => {
-            try {
-              const cloned = res.clone();
-              const data = await cloned.json();
-              if (data && (data.code === 200 || Array.isArray(data))) {
-                sessionStorage.setItem(cacheKey, JSON.stringify(data));
-                localStorage.setItem(cacheKey, JSON.stringify(data));
-              }
-            } catch (_) { }
-          });
-          return new Response(JSON.stringify({ code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-      }
       if (cached) {
         config.adapter = async () => ({
           data: JSON.parse(cached),
