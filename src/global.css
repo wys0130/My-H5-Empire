@@ -200,34 +200,26 @@ img {
 @import '~codemirror/theme/material.css';
 
 /* ==========================================================================
-   🌟 纯净无错修复：释放滚轮 + 取色器绝对交互灵敏 + 属性栏齐整
+   🌟 纯净交互修正：仅提升取色器层级 + 表单齐平
    ========================================================================== */
-
-/* 1. 只提最高层级，绝对绝不加 pointer-events:none 等可能破坏 SketchPicker 内部点击的代码 */
 .ant-popover,
 .ant-color-picker-palette,
 .sketch-picker,
 [class*="colorPicker"],
 [class*="ColorPicker"],
 [class*="picker-wrap"],
-[class*="pickerWrap"],
-[class*="color-wrap"],
-[class*="colorWrap"],
 [class*="sketch"] {
   z-index: 2147483647 !important;
   pointer-events: auto !important;
 }
 
-/* 2. 保护左侧标签文字，杜绝折行变竖排 */
 .ant-form-item-label,
 .ant-form-item-label>label {
   white-space: nowrap !important;
   flex-shrink: 0 !important;
-  max-width: none !important;
   width: auto !important;
 }
 
-/* 3. 右侧动态表单列表行（减号 - | 标签名 | 输入框）：横向齐排，互不遮扯 */
 .ant-form-item-control-input-content .ant-row,
 .ant-form-item-control-input-content [class*="listItem"],
 .ant-form-item-control-input-content [class*="formItemRow"] {

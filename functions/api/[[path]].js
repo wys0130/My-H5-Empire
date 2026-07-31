@@ -39,6 +39,7 @@ export async function onRequest(context) {
 
     const db = getDb();
 
+    // 🌟 100% 完整原版初始化数据，绝不简化一字一句！
     async function ensureTablesSafely(dbClient) {
         try {
             await dbClient.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', vip_expire DATETIME DEFAULT NULL, failed_attempts INTEGER DEFAULT 0, parent_agent_id INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").catch(() => { });
@@ -54,9 +55,9 @@ export async function onRequest(context) {
             await dbClient.execute({ sql: `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin@coolmall.com', ?, 'admin')`, args: [adminPwd] }).catch(() => { });
             await dbClient.execute({ sql: `INSERT OR IGNORE INTO users (id, username, password, role) VALUES (2, 'designer@coolmall.com', ?, 'user')`, args: [userPwd] }).catch(() => { });
             await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('carousel', '[{"id":1,"title":"酷猫商业中枢","desc":"海量高质量 H5 落地页，全网一键分发","image_url":""},{"id":2,"title":"极速生产力引擎","desc":"无需代码，让创意瞬间落地商业化","image_url":""}]')`).catch(() => { });
-            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('announcement', '🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线！')`).catch(() => { });
-            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_thoughts', '[{"id":"101","time":"10:30:15","title":"白天常规巡检","content":"正在监控平台流水、流量热力图及各模块流畅度...","type":"info"}]')`).catch(() => { });
-            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_proposals', '[{"id":"skill_auto_seo","title":"自动化双语 SEO 洗稿中枢","desc":"夜间侦测发现海外 Pinterest 对插画类模板流量扶持极大。","status":"pending","type":"marketing"}]')`).catch(() => { });
+            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('announcement', '🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线，快来开启您的创意创作吧！')`).catch(() => { });
+            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_thoughts', '[{"id":"101","time":"10:30:15","title":"白天常规巡检","content":"正在监控平台流水、流量热力图及各模块流畅度...","type":"info"},{"id":"102","time":"02:15:00","title":"夜间深度自检","content":"Boss 已离线，神经网络开始全网矩阵搜索与商业复盘...","type":"thought"}]')`).catch(() => { });
+            await dbClient.execute(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('ai_proposals', '[{"id":"skill_auto_seo","title":"自动化双语 SEO 洗稿中枢","desc":"夜间侦测发现海外 Pinterest 对插画类模板流量扶持极大。已编写自动抓取、双语翻译并静默发帖的脚本原型。","status":"pending","type":"marketing"},{"id":"skill_webgl_3d","title":"WebGL 3D 旋转组件注入","desc":"竞品分析显示 3D 组件转化率溢价 20%。已抓取 Three.js 开源代码并封装，请求合入底层组件库。","status":"pending","type":"tech"}]')`).catch(() => { });
         } catch (err) {
             console.error("数据库初始化警告:", err);
         }
@@ -98,7 +99,87 @@ export async function onRequest(context) {
         }), { headers: corsHeaders });
     }
 
-    // 3. 🌟 极速日志接口 (/operation-logs)：严格禁止 SELECT backup_data！从 1330KB 压至 0.5KB！
+    // 3. 轮播图配置 (全量保原版)
+    if (pathname.includes("/api/settings/carousel") || pathname.includes("/api/admin/settings/carousel")) {
+        if (request.method === "POST" || request.method === "PUT") {
+            try {
+                const body = await request.json();
+                const dataVal = body.data || body;
+                await db.execute({
+                    sql: `UPDATE system_settings SET value = ? WHERE key = 'carousel'`,
+                    args: [JSON.stringify(dataVal)]
+                });
+                return new Response(JSON.stringify({ code: 200, success: true, msg: "主页轮播图更新成功" }), { headers: corsHeaders });
+            } catch (e) {
+                return new Response(JSON.stringify({ code: 500, msg: "保存失败" }), { headers: corsHeaders });
+            }
+        }
+        try {
+            const res = await db.execute("SELECT value FROM system_settings WHERE key = 'carousel'");
+            let data = res.rows.length > 0 ? JSON.parse(res.rows[0].value) : [];
+            if (!data || data.length === 0) {
+                data = [
+                    { id: 1, title: '酷猫商业中枢', desc: '海量高质量 H5 落地页，全网一键分发', image_url: '' },
+                    { id: 2, title: '极速生产力引擎', desc: '无需代码，让创意瞬间落地商业化', image_url: '' }
+                ];
+            }
+            return new Response(JSON.stringify({ code: 200, data }), { headers: corsHeaders });
+        } catch (e) {
+            const fallback = [
+                { id: 1, title: '酷猫商业中枢', desc: '海量高质量 H5 落地页，全网一键分发', image_url: '' },
+                { id: 2, title: '极速生产力引擎', desc: '无需代码，让创意瞬间落地商业化', image_url: '' }
+            ];
+            return new Response(JSON.stringify({ code: 200, data: fallback }), { headers: corsHeaders });
+        }
+    }
+
+    // 4. 🌟 公告栏配置 (彻底修复：防空值截断，保释默认公告)
+    if (pathname.includes("/api/settings/announcement") || pathname.includes("/api/admin/settings/announcement")) {
+        const fullAnnouncement = "🎉 欢迎来到酷猫商业中枢！全新云表格与H5可视化编辑器已全面上线，快来开启您的创意创作吧！";
+        if (request.method === "POST" || request.method === "PUT") {
+            try {
+                const body = await request.json();
+                await db.execute({
+                    sql: `UPDATE system_settings SET value = ? WHERE key = 'announcement'`,
+                    args: [body.content || fullAnnouncement]
+                });
+                return new Response(JSON.stringify({ code: 200, msg: "公告更新成功" }), { headers: corsHeaders });
+            } catch (e) {
+                return new Response(JSON.stringify({ code: 500, msg: "更新失败" }), { headers: corsHeaders });
+            }
+        }
+        try {
+            const res = await db.execute("SELECT value FROM system_settings WHERE key = 'announcement'");
+            let data = res.rows.length > 0 ? res.rows[0].value : fullAnnouncement;
+            if (!data || data.trim() === "") data = fullAnnouncement;
+            return new Response(JSON.stringify({ code: 200, data }), { headers: corsHeaders });
+        } catch (e) {
+            return new Response(JSON.stringify({ code: 200, data: fullAnnouncement }), { headers: corsHeaders });
+        }
+    }
+
+    // 5. AI 思考与提案
+    if (pathname.includes("/api/ai/thoughts")) {
+        try {
+            const res = await db.execute("SELECT value FROM system_settings WHERE key = 'ai_thoughts'");
+            const data = res.rows.length > 0 ? JSON.parse(res.rows[0].value) : [];
+            return new Response(JSON.stringify({ code: 200, data }), { headers: corsHeaders });
+        } catch (e) {
+            return new Response(JSON.stringify({ code: 200, data: [] }), { headers: corsHeaders });
+        }
+    }
+
+    if (pathname.includes("/api/ai/proposals")) {
+        try {
+            const res = await db.execute("SELECT value FROM system_settings WHERE key = 'ai_proposals'");
+            const data = res.rows.length > 0 ? JSON.parse(res.rows[0].value) : [];
+            return new Response(JSON.stringify({ code: 200, data }), { headers: corsHeaders });
+        } catch (e) {
+            return new Response(JSON.stringify({ code: 200, data: [] }), { headers: corsHeaders });
+        }
+    }
+
+    // 6. 操作日志 (/operation-logs) - 极速瘦身，不读大图
     if (pathname.includes("/operation-logs") || pathname.includes("/api/logs")) {
         try {
             const res = await db.execute("SELECT id, admin_id, action, target_id, datetime(created_at, 'localtime') as created_at FROM operation_logs ORDER BY id DESC LIMIT 50");
@@ -108,7 +189,7 @@ export async function onRequest(context) {
         }
     }
 
-    // 4. 🌟 极速轻量作品列表：仅取 id, title, cover_url, is_published！严禁传输 schema_json！
+    // 7. 作品列表大盘 (严禁 SELECT schema_json！)
     if (
         pathname.includes("/work") ||
         pathname.includes("/h5") ||
@@ -132,7 +213,6 @@ export async function onRequest(context) {
                 )
             `).catch(() => { });
 
-            // 绝不要拉取 schema_json！
             const res = await db.execute(`
                 SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date 
                 FROM h5_works 
@@ -199,7 +279,7 @@ export async function onRequest(context) {
         }
     }
 
-    // 5. 保存作品 (/api/h5/save)
+    // 8. 保存作品 (/api/h5/save)
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
@@ -255,7 +335,7 @@ export async function onRequest(context) {
         }
     }
 
-    // 6. 🌟 单个作品详情 (/api/h5/work/:id)：点击进入具体作品编辑时，才拉取沉重的 schema_json！
+    // 9. 单个作品详情 (/api/h5/work/:id) -> 这里才返回 schema_json！
     if (pathname.includes("/api/h5/work/") || pathname.includes("/work/")) {
         const parts = pathname.split("/");
         const workId = parts[parts.length - 1];
@@ -278,7 +358,7 @@ export async function onRequest(context) {
         }
     }
 
-    // 7. 图片上传 (/api/upload)
+    // 10. 图片上传 (/api/upload)
     if (pathname.includes("/api/upload")) {
         try {
             const contentType = request.headers.get("content-type") || "";

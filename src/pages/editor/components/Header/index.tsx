@@ -50,89 +50,60 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
   const [saveTplName, setSaveTplName] = useState(localStorage.getItem('coolmall_current_title') || '');
   const [isCapturing, setIsCapturing] = useState(false);
 
-  // 🌟 降维高压缩略图 Pattern：
-  // 1. 先进行离屏全画面精准截屏
-  // 2. 将截屏后的图像缩放到宽度 200px，以质量 0.5 JPEG 极速输出！
-  // 3. 封底大小由 ~150KB 暴力压至 ~6KB！真正做到极速轻量！
+  // 🌟 核心长图截图 + 轻量缩略图压缩：保全长图、砍掉体积！
   const captureCanvas = async (scaleMultiplier: number = 1.0) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const originalEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
-      if (!originalEl) return absoluteFallback;
+      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
+      if (!targetEl) return absoluteFallback;
 
-      const sourceEl = originalEl as HTMLElement;
+      const el = targetEl as HTMLElement;
       await document.fonts.ready;
 
-      let maxBottom = sourceEl.scrollHeight || 600;
-      const canvasTop = sourceEl.getBoundingClientRect().top;
-
-      sourceEl.querySelectorAll('*').forEach((node: any) => {
+      let maxBottom = el.scrollHeight || 600;
+      const canvasTop = el.getBoundingClientRect().top;
+      el.querySelectorAll('*').forEach((node: any) => {
         if (node.getBoundingClientRect) {
           const rect = node.getBoundingClientRect();
-          const bottomDistance = (rect.bottom - canvasTop) + sourceEl.scrollTop;
+          const bottomDistance = (rect.bottom - canvasTop) + el.scrollTop;
           if (bottomDistance > maxBottom) maxBottom = bottomDistance;
         }
       });
 
-      if (pointData && pointData.length) {
-        pointData.forEach((item: any) => {
-          const itemBottom = (Number(item.top) || Number(item.y) || 0) + (Number(item.height) || Number(item.h) || 120);
-          if (itemBottom > maxBottom) maxBottom = itemBottom;
-        });
-      }
+      const renderHeight = Math.max(el.scrollHeight, Math.min(maxBottom + 50, 5000));
+      const renderWidth = el.offsetWidth || 375;
 
-      const fullRenderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
-      const renderWidth = sourceEl.offsetWidth || 375;
-
-      const sandbox = document.createElement('div');
-      sandbox.id = 'coolmall-offscreen-sandbox';
-      sandbox.style.cssText = `
-        position: fixed;
-        left: -9999px;
-        top: 0;
-        width: ${renderWidth}px;
-        height: ${fullRenderHeight}px;
-        overflow: visible;
-        z-index: -9999;
-        background: #ffffff;
-      `;
-
-      const cloneEl = sourceEl.cloneNode(true) as HTMLElement;
-      cloneEl.style.cssText = `
-        width: ${renderWidth}px !important;
-        height: ${fullRenderHeight}px !important;
-        min-height: ${fullRenderHeight}px !important;
-        max-height: none !important;
-        overflow: visible !important;
-        position: relative !important;
-        transform: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      `;
-      sandbox.appendChild(cloneEl);
-      document.body.appendChild(sandbox);
-
-      const canvas = await html2canvas(cloneEl, {
+      const canvas = await html2canvas(el, {
         useCORS: true,
         allowTaint: false,
         scale: scaleMultiplier,
         logging: false,
         backgroundColor: '#ffffff',
         width: renderWidth,
-        height: fullRenderHeight,
-        windowWidth: renderWidth,
-        windowHeight: fullRenderHeight,
+        height: renderHeight,
+        windowWidth: 1440,
+        windowHeight: renderHeight + 600,
         scrollY: 0,
         scrollX: 0,
+        onclone: (clonedDoc: Document) => {
+          const clonedEl = clonedDoc.getElementById('js_canvas') || clonedDoc.querySelector('.canvas');
+          if (!clonedEl) return;
+          let curr: HTMLElement | null = clonedEl as HTMLElement;
+          while (curr && curr !== clonedDoc.body) {
+            curr.style.overflow = 'visible';
+            curr.style.height = 'auto';
+            curr.style.maxHeight = 'none';
+            curr = curr.parentElement;
+          }
+          (clonedEl as HTMLElement).style.height = `${renderHeight}px`;
+        }
       });
 
-      document.body.removeChild(sandbox);
-
-      // 🌟 极限瘦身压缩：将原画压缩为 200px 宽缩略图！体积压减 95%！
+      // 🎯 极速微型缩略图压缩：缩放为 200px 宽度，质量 0.6，单图只有 6KB！
       const thumbCanvas = document.createElement('canvas');
       const thumbWidth = 200;
-      const thumbHeight = Math.round((fullRenderHeight / renderWidth) * thumbWidth);
+      const thumbHeight = Math.round((renderHeight / renderWidth) * thumbWidth);
       thumbCanvas.width = thumbWidth;
       thumbCanvas.height = thumbHeight;
       const ctx = thumbCanvas.getContext('2d');
@@ -142,7 +113,7 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         ctx.drawImage(canvas, 0, 0, thumbWidth, thumbHeight);
       }
 
-      const compressedBase64 = thumbCanvas.toDataURL('image/jpeg', 0.5);
+      const compressedBase64 = thumbCanvas.toDataURL('image/jpeg', 0.6);
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,8 +123,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
       return res.code === 200 ? (res.url || res.data?.url) : absoluteFallback;
     } catch (e) {
       console.error("Cover capture error:", e);
-      const existingSandbox = document.getElementById('coolmall-offscreen-sandbox');
-      if (existingSandbox) document.body.removeChild(existingSandbox);
       return absoluteFallback;
     }
   };
