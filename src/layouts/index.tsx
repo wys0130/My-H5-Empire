@@ -70,6 +70,21 @@ const AdminUsers = () => {
   };
 
   const cols = [
+    {
+      title: '快照',
+      dataIndex: 'cover_url',
+      render: (url: string) => (
+        <img
+          src={url}
+          onError={(e: any) => {
+            e.target.onerror = null;
+            e.target.src = 'https://via.placeholder.com/40x50/f3f4f6/999999?text=无图';
+          }}
+          style={{ width: 40, height: 50, objectFit: 'cover', borderRadius: 4 }}
+        />
+      )
+    },
+    { title: '作品名', dataIndex: 'title' },
     { title: 'ID', dataIndex: 'id' },
     { title: '账号邮箱', dataIndex: 'username', render: (t: string) => <b>{t}</b> },
     { title: '身份权限', dataIndex: 'role', render: (r: string) => <Tag color={r === 'admin' ? 'red' : 'blue'}>{r}</Tag> },

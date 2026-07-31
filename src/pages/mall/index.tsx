@@ -19,17 +19,26 @@ const MallPortal = () => {
     const userStr = localStorage.getItem('coolmall_user');
     const user = userStr ? JSON.parse(userStr) : null;
 
+    // 在 src/pages/mall/index.tsx 的 const MallPortal = () => { ... } 内部修改 loadData
     const loadData = () => {
-        fetch('/api/templates/list').then(r => r.json()).then(res => { if (res.code === 200) setTemplates(res.data || []); });
-        fetch('/api/settings/carousel').then(r => r.json()).then(res => { if (res.code === 200) setCarouselData(res.data || []); });
-        fetch('/api/settings/announcement').then(r => r.json()).then(res => { if (res.code === 200) setAnnouncement(res.data || ''); });
+        // 封装一个安全请求函数，防止 res.json() 解析失败导致页面崩溃
+        const safeFetch = (url: string, options?: any) => {
+            return fetch(url, options)
+                .then(res => res.json())
+                .catch(err => {
+                    console.error(`❌ 接口请求失败: ${url}`, err);
+                    return { code: -1, data: [] }; // 兜底返回
+                });
+        };
+
+        safeFetch('/api/templates/list').then(res => { if (res.code === 200) setTemplates(res.data || []); });
+        safeFetch('/api/settings/carousel').then(res => { if (res.code === 200) setCarouselData(res.data || []); });
+        safeFetch('/api/settings/announcement').then(res => { if (res.code === 200) setAnnouncement(res.data || ''); });
         if (user) {
-            fetch('/api/h5/my-works', { headers: { 'x-role': user.role, 'x-user-id': user.userId?.toString() } })
-                .then(r => r.json()).then(res => { if (res.code === 200) setMyWorks(res.data || []); });
+            safeFetch('/api/h5/my-works', { headers: { 'x-role': user.role, 'x-user-id': user.userId?.toString() } })
+                .then(res => { if (res.code === 200) setMyWorks(res.data || []); });
         }
     };
-
-    useEffect(() => { loadData(); }, []);
 
     const handleUseTemplate = (tpl: any) => {
         let schemaStr = tpl.json_data || '[]';
