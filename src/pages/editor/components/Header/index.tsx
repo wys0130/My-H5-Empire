@@ -88,17 +88,17 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
   // 🌟 降维打击 · Off-screen Full-Height Sandbox Pattern（离屏无限高沙盒长画卷截屏）：
   // 彻底脱离编辑器可视区域与 overflow 限制，从坐标 Y:0 抓到 Y:maxBottom，底部图标一毫不漏！
+  // 🌟 降维打击 · Off-screen Sandbox Pattern（离屏脱流全高截屏 + 200px 缩略图）
   const captureCanvas = async (scaleMultiplier: number = 1.0) => {
     const absoluteFallback = 'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==';
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const targetEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
-      if (!targetEl) return absoluteFallback;
-
-      const sourceEl = targetEl as HTMLElement;
+      const originalEl = document.getElementById('js_canvas') || document.querySelector('.canvas');
+      if (!originalEl) return absoluteFallback;
+      const sourceEl = originalEl as HTMLElement;
       await document.fonts.ready;
 
-      // 1. 测算画面中最底层子节点（包含汽车图标）的极限绝对底坐标
+      // 计算最底部组件的绝对 Y 坐标
       let maxBottom = sourceEl.scrollHeight || 600;
       const canvasTop = sourceEl.getBoundingClientRect().top;
       sourceEl.querySelectorAll('*').forEach((node: any) => {
@@ -108,7 +108,6 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
           if (bottomDistance > maxBottom) maxBottom = bottomDistance;
         }
       });
-
       if (pointData && pointData.length) {
         pointData.forEach((item: any) => {
           const itemBottom = (Number(item.top) || Number(item.y) || 0) + (Number(item.height) || Number(item.h) || 120);
@@ -116,40 +115,38 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         });
       }
 
-      // 底部追加 60px 舒适边距，确保最低端图标100%全在画框内
-      const renderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
+      const fullRenderHeight = Math.max(sourceEl.scrollHeight, Math.min(maxBottom + 60, 6000));
       const renderWidth = sourceEl.offsetWidth || 375;
 
-      // 🌟 2. Pattern 核心：建立不受可视窗口边界和样式裁切的绝对离屏容器
+      // ----- 离屏沙盒：脱离所有视口限制 -----
       const sandbox = document.createElement('div');
       sandbox.id = 'coolmall-offscreen-sandbox';
       sandbox.style.cssText = `
-        position: fixed;
-        left: -99999px;
-        top: 0;
-        width: ${renderWidth}px;
-        height: ${renderHeight}px;
-        overflow: visible !important;
-        z-index: -99999;
-        background: #ffffff;
-      `;
-
+      position: fixed;
+      left: -99999px;
+      top: 0;
+      width: ${renderWidth}px;
+      height: ${fullRenderHeight}px;
+      overflow: visible !important;
+      z-index: -99999;
+      background: #ffffff;
+    `;
       const cloneEl = sourceEl.cloneNode(true) as HTMLElement;
       cloneEl.style.cssText = `
-        width: ${renderWidth}px !important;
-        height: ${renderHeight}px !important;
-        min-height: ${renderHeight}px !important;
-        max-height: none !important;
-        overflow: visible !important;
-        position: relative !important;
-        transform: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      `;
+      width: ${renderWidth}px !important;
+      height: ${fullRenderHeight}px !important;
+      min-height: ${fullRenderHeight}px !important;
+      max-height: none !important;
+      overflow: visible !important;
+      position: relative !important;
+      transform: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    `;
       sandbox.appendChild(cloneEl);
       document.body.appendChild(sandbox);
 
-      // 🌟 3. 在克隆树中递归向上解开每个包装节点的 clip，对长卷一击抓取
+      // 对离屏完整长图进行渲染
       const canvas = await html2canvas(cloneEl, {
         useCORS: true,
         allowTaint: false,
@@ -157,9 +154,9 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         logging: false,
         backgroundColor: '#ffffff',
         width: renderWidth,
-        height: renderHeight,
+        height: fullRenderHeight,
         windowWidth: 1440,
-        windowHeight: renderHeight + 1000,
+        windowHeight: fullRenderHeight + 1000,
         scrollY: 0,
         scrollX: 0,
         onclone: (clonedDoc: Document) => {
@@ -177,10 +174,10 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
 
       document.body.removeChild(sandbox);
 
-      // 🌟 4. 将全高长图进行 200px 宽度等比超高压缩！将旧封面的 150KB 暴力压平到 ~5KB！
+      // ----- 缩略图压缩（200px 宽，质量 0.6） -----
       const thumbCanvas = document.createElement('canvas');
       const thumbWidth = 200;
-      const thumbHeight = Math.round((renderHeight / renderWidth) * thumbWidth);
+      const thumbHeight = Math.round((fullRenderHeight / renderWidth) * thumbWidth);
       thumbCanvas.width = thumbWidth;
       thumbCanvas.height = thumbHeight;
       const ctx = thumbCanvas.getContext('2d');
@@ -189,8 +186,8 @@ const HeaderComponent = memo((props: HeaderComponentProps) => {
         ctx.fillRect(0, 0, thumbWidth, thumbHeight);
         ctx.drawImage(canvas, 0, 0, thumbWidth, thumbHeight);
       }
-
       const compressedBase64 = thumbCanvas.toDataURL('image/jpeg', 0.6);
+
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

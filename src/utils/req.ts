@@ -3,7 +3,7 @@ import { message } from 'antd';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// 🌟 内置永不显空的初始化样板：即便没有缓存，首屏也绝对瞬间出画，不让用户看到空屏！
+// 永不空屏的默认快照（首次访问直接展示）
 const COLD_START_SNAPSHOTS: Record<string, any> = {
   '/api/templates/list': [],
   '/api/h5/my-works': [],
@@ -21,44 +21,45 @@ const COLD_START_SNAPSHOTS: Record<string, any> = {
 
 const isTargetUrl = (url: string) => {
   if (!url) return false;
-  return url.includes('/api/') || url.includes('works') || url.includes('list') || url.includes('logs') || url.includes('audit') || url.includes('overview') || url.includes('announcement') || url.includes('carousel');
+  return url.includes('/api/') || url.includes('works') || url.includes('list') || url.includes('logs') || url.includes('audit');
 };
 
-// 🌟 1. Native fetch Local-First 0毫秒快照返回
+// ---------- 原生 fetch 拦截 ----------
 if (typeof window !== 'undefined' && window.fetch) {
   const originalFetch = window.fetch;
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
     const urlStr = typeof input === 'string' ? input : input.toString();
     const isGet = !init || !init.method || init.method.toUpperCase() === 'GET';
-
     if (isGet && isTargetUrl(urlStr)) {
-      const cacheKey = `COOL_LOCAL_FIRST_${urlStr}`;
+      const cacheKey = `SWR_LOCAL_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
 
-      // 后台发起远端网络请求，静默同步最新数据，绝不阻塞前台屏幕！
+      // 后台静默更新（不阻塞主线程）
       originalFetch(input, init).then(async (res) => {
         try {
           const cloned = res.clone();
           const data = await cloned.json();
           if (data && (data.code === 200 || Array.isArray(data))) {
-            sessionStorage.setItem(cacheKey, JSON.stringify(data));
-            localStorage.setItem(cacheKey, JSON.stringify(data));
+            const str = JSON.stringify(data);
+            sessionStorage.setItem(cacheKey, str);
+            localStorage.setItem(cacheKey, str);
           }
-        } catch (e) { }
+        } catch (_) { }
       });
 
-      // 第 0 毫秒直接吐出本地持久化数据或默认模版！
+      // 1st 防线：缓存存在 -> 0ms 返回
       if (cached) {
         try {
           return new Response(cached, { status: 200, headers: { 'Content-Type': 'application/json' } });
-        } catch (e) { }
+        } catch (_) { }
       }
 
+      // 2nd 防线：快照兜底 -> 0ms 返回
       for (const [key, snapshot] of Object.entries(COLD_START_SNAPSHOTS)) {
         if (urlStr.includes(key)) {
           return new Response(JSON.stringify({ code: 200, data: snapshot, list: snapshot, rows: snapshot, total: snapshot.length }), {
             status: 200,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' }
           });
         }
       }
@@ -67,21 +68,20 @@ if (typeof window !== 'undefined' && window.fetch) {
   };
 }
 
+// ---------- Axios 拦截 ----------
 const instance = axios.create({
   baseURL: isDev ? 'http://localhost:3000' : '',
   timeout: 20000,
   withCredentials: true,
 });
 
-// 🌟 2. Axios Local-First 0毫秒返回
 instance.interceptors.request.use(
   async function (config) {
     config.headers = { ...config.headers, 'x-requested-with': 'XMLHttpRequest' };
     const isGet = !config.method || config.method.toUpperCase() === 'GET';
     const urlStr = config.url || '';
-
     if (isGet && isTargetUrl(urlStr)) {
-      const cacheKey = `COOL_LOCAL_FIRST_${urlStr}`;
+      const cacheKey = `SWR_LOCAL_${urlStr}`;
       const cached = sessionStorage.getItem(cacheKey) || localStorage.getItem(cacheKey);
       if (cached) {
         config.adapter = async () => ({

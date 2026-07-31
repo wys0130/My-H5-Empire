@@ -223,7 +223,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ code: 200, msg: "⏪ 已成功回滚至最近的安全快照版本！" }), { headers: corsHeaders });
     }
 
-    // 8. & 9. 商城首页大盘、我的作品、后台管理“作品审核/作品大盘/操作日志” -> 极速瘦身查询
+    // 8. & 9. 商城首页大盘、我的作品、后台管理、操作日志 —— 极致瘦身版
     if (
         pathname.includes("/api/templates/list") ||
         pathname.includes("/api/h5/my-works") ||
@@ -234,37 +234,41 @@ export async function onRequest(context) {
         pathname.includes("/all-works") ||
         pathname.includes("/operation-logs")
     ) {
-        // ① 如果是请求后台操作日志，直接吐出轻量日志，不查大数据
+        // ----- 如果是操作日志，只查基础字段，绝不查 backup_data -----
         if (pathname.includes("/operation-logs")) {
             try {
-                const logRes = await db.execute("SELECT id, admin_id, action, target_id, datetime(created_at, 'localtime') as created_at FROM operation_logs ORDER BY id DESC LIMIT 50");
+                const logRes = await db.execute(`
+        SELECT id, admin_id, action, target_id, datetime(created_at, 'localtime') as created_at
+        FROM operation_logs
+        ORDER BY id DESC
+        LIMIT 50
+      `);
                 return new Response(JSON.stringify({ code: 200, data: logRes.rows || [], list: logRes.rows || [] }), { headers: corsHeaders });
             } catch (e) {
                 return new Response(JSON.stringify({ code: 200, data: [], list: [] }), { headers: corsHeaders });
             }
         }
 
-        // ② 作品大盘/审核列表：SELECT 中坚决剔除 schema_json，数据包从几 MB 压至几 KB！
+        // ----- 作品大盘 / 审核列表：只取必要字段，严禁 schema_json! -----
         try {
             await db.execute(`
-                CREATE TABLE IF NOT EXISTS h5_works (
-                    id TEXT PRIMARY KEY,
-                    user_id TEXT DEFAULT '1',
-                    title TEXT,
-                    schema_json TEXT,
-                    cover_url TEXT,
-                    category TEXT DEFAULT 'h5',
-                    is_published INTEGER DEFAULT 1,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `).catch(() => { });
+      CREATE TABLE IF NOT EXISTS h5_works (
+        id TEXT PRIMARY KEY,
+        user_id TEXT DEFAULT '1',
+        title TEXT,
+        schema_json TEXT,
+        cover_url TEXT,
+        category TEXT DEFAULT 'h5',
+        is_published INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).catch(() => { });
 
-            // ⚠️ 关键优化：只查 id, title, cover_url, category, is_published, date
             const res = await db.execute(`
-                SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date 
-                FROM h5_works 
-                ORDER BY updated_at DESC
-            `);
+      SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date
+      FROM h5_works
+      ORDER BY updated_at DESC
+    `);
 
             let rows = res.rows || [];
             if (rows.length === 0) {
@@ -278,14 +282,15 @@ export async function onRequest(context) {
                 }];
             }
 
+            // 万能别名映射，兼容各种 Table 字段绑定
             const normalizedRows = rows.map(item => ({
                 ...item,
                 key: item.id,
                 workId: item.id,
                 workName: item.title,
                 name: item.title,
-                status: item.is_published === 1 ? '已展出在大盘' : '待审核',
-                schema: [],
+                status: item.is_published === 1 ? '已上架' : '待审核',
+                schema: [],          // 列表一律置空，省带宽
                 json_data: []
             }));
 
@@ -296,9 +301,8 @@ export async function onRequest(context) {
                 list: normalizedRows,
                 rows: normalizedRows,
                 total: normalizedRows.length
-            }), {
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-            });
+            }), { headers: corsHeaders });
+
         } catch (e) {
             const fallbackRows = [{
                 id: "H5_DEMO_001",
@@ -310,7 +314,7 @@ export async function onRequest(context) {
                 cover_url: "/logo.png",
                 category: "h5",
                 is_published: 1,
-                status: "已展出在大盘",
+                status: "已上架",
                 date: "2026-07-31 10:00:00"
             }];
             return new Response(JSON.stringify({
@@ -320,9 +324,7 @@ export async function onRequest(context) {
                 list: fallbackRows,
                 rows: fallbackRows,
                 total: 1
-            }), {
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-            });
+            }), { headers: corsHeaders });
         }
     }
 
