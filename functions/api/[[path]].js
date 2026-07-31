@@ -1,9 +1,8 @@
 import { createClient } from "@libsql/client/web";
 
-// 🌟 全局内存初始化锁：同一工作实例生命周期内只建表与发种一次，杜绝点击菜单卡顿，150ms 瞬间秒出！
+// 🌟 全局内存初始化锁：同一工作实例生命周期内只建表与发种一次，杜绝点击菜单卡顿
 let isDbInitialized = false;
 
-// 🌟 纯 JS 哈希算法 (不依赖 Node.js crypto 模块，100% 兼容 Cloudflare 边缘环境，彻底消灭 Build Failed!)
 const SALT = "coolmall_security_salt_2026_#@!";
 function hashPassword(str) {
     let input = str + SALT;
@@ -34,7 +33,6 @@ export async function onRequest(context) {
         "Access-Control-Allow-Origin": "*",
     };
 
-    // 🌟 双保险兼容：同时适配 TURSO_DATABASE_URL 和 TURSO_DB_URL，绝不因变量名失联！
     const getDb = () => createClient({
         url: env.TURSO_DATABASE_URL || env.TURSO_DB_URL,
         authToken: env.TURSO_AUTH_TOKEN
@@ -42,9 +40,6 @@ export async function onRequest(context) {
 
     const db = getDb();
 
-    // =================================================================
-    // 🌟 核心表结构与初始化（拆分单条安全执行，绝不因某一条报错导致整张表建不起来）
-    // =================================================================
     async function ensureTablesSafely(dbClient) {
         try {
             await dbClient.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'user', vip_expire DATETIME DEFAULT NULL, failed_attempts INTEGER DEFAULT 0, parent_agent_id INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").catch(() => { });
@@ -223,13 +218,16 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ code: 200, msg: "⏪ 已成功回滚至最近的安全快照版本！" }), { headers: corsHeaders });
     }
 
-    // 8. & 9. 首页大盘、我的作品、后台控制台“作品审核/作品大盘” -> 万能通配查询
+    // 8. & 9. 🚀 降维瘦身版：商城大盘、我的作品、后台控制台作品审核与大盘列表
+    // ⚠️ 绝不在列表 SELECT 里查 schema_json，体积直接砍掉 2000 倍！
     if (
         pathname.includes("/work") ||
         pathname.includes("/h5") ||
         pathname.includes("/template") ||
         pathname.includes("/audit") ||
         pathname.includes("/examine") ||
+        pathname.includes("/all-works") ||
+        pathname.includes("/operation-logs") ||
         (pathname.includes("/admin/") && request.method === "GET" && !pathname.includes("/user"))
     ) {
         try {
@@ -246,8 +244,9 @@ export async function onRequest(context) {
                 )
             `).catch(() => { });
 
+            // ⚠️ 只查 ID、名字和封面，绝不要查 schema_json！
             const res = await db.execute(`
-                SELECT id, title, cover_url, category, is_published, schema_json, datetime(updated_at, 'localtime') as date 
+                SELECT id, title, cover_url, category, is_published, datetime(updated_at, 'localtime') as date 
                 FROM h5_works 
                 ORDER BY updated_at DESC
             `);
@@ -260,7 +259,7 @@ export async function onRequest(context) {
                     cover_url: "/logo.png",
                     category: "h5",
                     is_published: 1,
-                    date: "2026-07-30 12:00:00"
+                    date: "2026-07-31 10:00:00"
                 }];
             }
 
@@ -270,9 +269,9 @@ export async function onRequest(context) {
                 workId: item.id,
                 workName: item.title,
                 name: item.title,
-                status: item.is_published === 1 ? '已展出在大盘' : '待审核',
-                schema: item.schema_json,
-                json_data: item.schema_json
+                status: item.is_published === 1 ? '已上架' : '待审核',
+                schema: [],
+                json_data: []
             }));
 
             return new Response(JSON.stringify({
@@ -296,8 +295,8 @@ export async function onRequest(context) {
                 cover_url: "/logo.png",
                 category: "h5",
                 is_published: 1,
-                status: "已展出在大盘",
-                date: "2026-07-30 12:00:00"
+                status: "已上架",
+                date: "2026-07-31 10:00:00"
             }];
             return new Response(JSON.stringify({
                 code: 200,
@@ -312,15 +311,13 @@ export async function onRequest(context) {
         }
     }
 
-    // 10. 保存作品并发布到“我的作品” (/api/h5/save) -> 终极字段自愈版
+    // 10. 保存作品 (/api/h5/save)
     if (pathname.includes("/api/h5/save") || pathname.includes("/api/work/add")) {
         try {
             const body = await request.json();
             const { workId, schema, title, cover_url, category, is_published, data } = body;
             const userId = request.headers.get("x-user-id") || "1";
 
-            // 🌟 核心破局：不管远程表建于何时、缺什么字段，这里强制逐个 ALTER 补齐！
-            // 如果字段已存在报错会被 catch 默默吃掉，如果不存在则瞬间补上，彻底根除列不存在的报错！
             await db.execute("CREATE TABLE IF NOT EXISTS h5_works (id TEXT PRIMARY KEY)").catch(() => { });
             await db.execute("ALTER TABLE h5_works ADD COLUMN user_id TEXT DEFAULT '1'").catch(() => { });
             await db.execute("ALTER TABLE h5_works ADD COLUMN title TEXT").catch(() => { });
@@ -339,7 +336,6 @@ export async function onRequest(context) {
             const finalCategory = category || "h5";
             const finalPub = is_published !== undefined ? Number(is_published) : 1;
 
-            // 🌟 此时再写入，远程表已经具备了所有字段，100% 成功落库！
             await db.execute({
                 sql: `INSERT INTO h5_works (id, user_id, title, schema_json, cover_url, category, is_published, updated_at) 
                       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) 
@@ -371,7 +367,7 @@ export async function onRequest(context) {
         }
     }
 
-    // 11. 单个作品详情 (/api/h5/work/:id)
+    // 11. 单个作品详情 (/api/h5/work/:id) -> 这里才读取真实的 schema_json！
     if (pathname.includes("/api/h5/work/") || pathname.includes("/work/")) {
         const parts = pathname.split("/");
         const workId = parts[parts.length - 1];

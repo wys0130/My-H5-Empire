@@ -200,41 +200,38 @@ img {
 @import '~codemirror/theme/material.css';
 
 /* ==========================================================================
-   🌟 终极降维优化：取色器正常归位交互 & 表单排版互不重叠
+   🌟 终极通杀修复：取色器可点击可滚动 / 表单文字不折行
    ========================================================================== */
 
-/* 1. 绝不准额外加 position: absolute! 让 SketchPicker/PopPalette 自行推算定位，仅仅提高层级 */
+/* 1. 强制穿透所有颜色选择器面板，层级提到最高 */
 .ant-popover,
 .ant-color-picker-palette,
 .sketch-picker,
+[class*="color-picker"],
 [class*="colorPicker"],
 [class*="ColorPicker"],
 [class*="picker-wrap"],
-[class*="pickerWrap"],
-[class*="color-wrap"],
-[class*="colorWrap"],
 [class*="sketch"] {
-  z-index: 99999999 !important;
+  z-index: 2147483647 !important;
   pointer-events: auto !important;
 }
 
-/* 2. 彻底销毁任何在取色器弹出时阻止点击和滑动页面的底层透明遮罩 */
+/* 2. 彻底销毁选中取色器时在底层生成的全屏透明阻挡罩，不再锁死页面点击与滑轮 */
 div[class*="cover"][style*="fixed"],
 div[class*="mask"][style*="transparent"],
-div[class*="ColorPicker"]>div:first-child {
-  display: none !important;
+div[class*="backdrop"] {
   pointer-events: none !important;
 }
 
-/* 3. 右侧表单属性边栏排版：保护标签文字，杜绝与输入框、减号互相挤压重叠 */
+/* 3. 保护表单左侧标签文字，绝不换行，绝不被右侧控件挤扁 */
 .ant-form-item-label,
 .ant-form-item-label>label {
   white-space: nowrap !important;
   flex-shrink: 0 !important;
-  max-width: none !important;
   width: auto !important;
 }
 
+/* 4. 动态表单行（减号 - | 标签名 | 输入组件）整齐一字横排 */
 .ant-form-item-control-input-content .ant-row,
 .ant-form-item-control-input-content [class*="listItem"],
 .ant-form-item-control-input-content [class*="formItemRow"] {
